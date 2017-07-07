@@ -46,6 +46,11 @@ const baseSchema = `
     Response: String
 
   }
+
+  type Query {
+    employee ( id: Int ): Employee
+    review ( id: Int ): Review
+  }
 `;
 
 module.exports = baseSchema;
