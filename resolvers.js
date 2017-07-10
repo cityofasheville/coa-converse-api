@@ -1,38 +1,55 @@
 const sql = require('mssql');
 
+function getEmployee(id, pool) {
+  return pool.request()
+    .input('UserEmpID', sql.Int, id)
+    .execute('avp_Get_Employee')
+    .then(result => {
+      const e = result.recordset[0];
+      return {
+        id,
+        active: e.Active,
+        name: e.Employee,
+        email: e.Emp_Email,
+        position: e.Position,
+        department: e.Department,
+        division: e.Division,
+        last_reviewed: new Date(e.LastReviewed).toISOString(),
+        review_by: new Date(e.ReviewBy).toISOString(),
+        supervisor_id: e.SupID,
+        supervisor_name: e.Supervisor,
+        supervisor_email: e.Sup_Email,
+        employees: [],
+        reviews: null,
+      };
+    })
+    .catch(err => {
+      console.log(`Error getting employee: ${err}`);
+    });
+}
 const resolverMap = {
   Query: {
     employee(obj, args, context) {
-      console.log('In employee query');
       const pool = context.pool;
-      let id = args.id;
-      if (id === null) id = '6507';
-      // const empId = args.id ? args.id : context.employee_id;
-      return pool.request()
-        .input('UserEmpID', sql.Int, id)
-        .execute('avp_Get_Employee')
+      if (args.hasOwnProperty('id')) {
+        return getEmployee(args.id, pool);
+      } else if (context.email !== null) {
+        const query = `select EmpID from UserMap where Email = '${context.email}'`;
+        return pool.request()
+        .query(query)
         .then(result => {
-          const e = result.recordset[0];
-          return {
-            id,
-            active: e.Active,
-            name: e.Employee,
-            email: e.Emp_Email,
-            position: e.Position,
-            department: e.Department,
-            division: e.Division,
-            last_reviewed: new Date(e.LastReviewed).toISOString(),
-            review_by: new Date(e.ReviewBy).toISOString(),
-            supervisor_id: e.SupID,
-            supervisor_name: e.Supervisor,
-            supervisor_email: e.Sup_Email,
-            employees: [],
-            reviews: null,
-          };
+          console.log(result);
+          if (result.recordset.length > 0) {
+            const id = result.recordset[0].EmpID;
+            return getEmployee(id, pool);
+          }
+          return null;
         })
         .catch(err => {
-          console.log(`Error getting employee: ${err}`);
+          console.log(`Error getting employee ID for email ${context.email}: ${err}`);
         });
+      }
+      return null;
     },
     review(obj, args, context) {
       const pool = context.pool;
@@ -85,12 +102,10 @@ const resolverMap = {
       const pool = context.pool;
       const id = obj.id;
       const employees = [];
-      console.log(`Looking up employees for ${id}`);
       return pool.request()
         .input('UserEmpID', sql.Int, id)
         .execute('avp_Get_My_Employees')
         .then(result => {
-          console.log(result);
           result.recordset.forEach(e => {
             const employee = {
               id: e.EmpID,
@@ -115,7 +130,6 @@ const resolverMap = {
         });
     },
     reviews(obj, args, context) {
-      console.log('Looking up reviews on employee');
       const pool = context.pool;
       const id = obj.id;
       const reviews = [];
@@ -123,7 +137,6 @@ const resolverMap = {
         .input('UserEmpID', sql.Int, id)
         .execute('avp_Reviews_of_Me')
         .then(result => {
-          console.log(result);
           result.recordset.forEach(r => {
             const review = {
               id: r.R_ID,

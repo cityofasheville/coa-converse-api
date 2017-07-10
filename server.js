@@ -38,22 +38,7 @@ const msconfig = {
     idleTimeoutMillis: 30000,
   },
 };
-/*sql.connect(msconfig, err => {
-  if (err) console.log(err);
-  new sql.Request().query('select * from Employees where EmpID = \'6507\'', (err1, result) => {
-        // ... error checks
-    if (err1) console.log(err1);
-    console.dir(result);
-  });
 
-  new sql.Request()
-  .input('UserEmpID', sql.Int, 6507)
-  .execute('avp_Reviews_of_Me', (err2, result) => {
-    // ... error checks
-    console.log(err2);
-    console.dir(result);
-  });
-});*/
 const pool = new sql.ConnectionPool(msconfig);
 pool.on('error', err => {
   console.log(`Got ourselves a damn error: ${err}`);
@@ -71,6 +56,7 @@ const graphQLServer = express().use('*', cors());
 
 graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   if (!req.headers.authorization || req.headers.authorization === 'null') {
+    console.log('NOT LOGGED IN');
     return {
       schema: executableSchema,
       context: {
