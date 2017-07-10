@@ -40,7 +40,6 @@ const baseSchema = `
   }
 
   type Response {
-    id: Int!
     question_id: Int
     review_id: Int!
     Response: String

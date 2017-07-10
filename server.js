@@ -26,42 +26,48 @@ firebase.initializeApp({
   databaseURL: 'https://simplicityii-878be.firebaseio.com',
 });
 
-const dbConfig = {
-  host: process.env.dbhost,
+const sql = require('mssql');
+const msconfig = {
   user: process.env.dbuser,
   password: process.env.dbpassword,
+  server: process.env.dbhost,
   database: process.env.database,
-  port: 5432,
-  ssl: false,
+  pool: {
+    max: 10,
+    min: 0,
+    idleTimeoutMillis: 30000,
+  },
 };
+/*sql.connect(msconfig, err => {
+  if (err) console.log(err);
+  new sql.Request().query('select * from Employees where EmpID = \'6507\'', (err1, result) => {
+        // ... error checks
+    if (err1) console.log(err1);
+    console.dir(result);
+  });
 
-const pool = new Pool(dbConfig);
+  new sql.Request()
+  .input('UserEmpID', sql.Int, 6507)
+  .execute('avp_Reviews_of_Me', (err2, result) => {
+    // ... error checks
+    console.log(err2);
+    console.dir(result);
+  });
+});*/
+const pool = new sql.ConnectionPool(msconfig);
+pool.on('error', err => {
+  console.log(`Got ourselves a damn error: ${err}`);
+});
+
+console.log('Here we go');
+pool.connect(err => {
+  if (err) console.log(`Error trying to create a connection pool ${err}`);
+});
+
 
 const GRAPHQL_PORT = process.env.PORT || 8080;
 console.log(`The graphql port is ${GRAPHQL_PORT}`);
 const graphQLServer = express().use('*', cors());
-
-// Decoded token: {
-//   "iss":"https://securetoken.google.com/simplicityii-878be",
-//   "name":"Eric Jackson",
-//   "picture":"https://lh3.googleusercontent.com/-YfuE6u4uQpE/AAAAAAAAAAI/AAAAAAAAAI8/aMN1TtvIV_I/s96-c/photo.jpg",
-//   "aud":"simplicityii-878be",
-//   "auth_time":1475009898,
-//   "user_id":"B9ewtFNqm0a9yOu2ljdHSEwkRS92",
-//   "sub":"B9ewtFNqm0a9yOu2ljdHSEwkRS92",
-//   "iat":1476205771,
-//   "exp":1476209371,
-//   "email":"eric@deepweave.com",
-//   "email_verified":true,
-//   "firebase":{
-//     "identities":{
-//       "google.com":["113759490376150867470"],
-//       "email":["eric@deepweave.com"]
-//     },
-//     "sign_in_provider":"google.com"
-//   },
-//   "uid":"B9ewtFNqm0a9yOu2ljdHSEwkRS92"
-// }
 
 graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   if (!req.headers.authorization || req.headers.authorization === 'null') {

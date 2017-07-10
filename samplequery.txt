@@ -1,0 +1,46 @@
+query {
+  review(id: 53) {
+      employee_id,
+      status,
+      employee_name,
+      supervisor_id,
+      supervisor_id,
+      periodStart,
+      periodEnd
+      questions {
+        id
+        question
+        required
+      }
+      responses {
+        question_id,
+        Response
+      }
+    }
+
+    employee(id: 1316) {
+      name
+      employees {
+        name
+        id
+      }
+    }
+    employee(id: 6507) {
+      name
+      employees {
+        id
+        name
+      }
+      reviews {
+        id
+        reviewer_name
+        responses {
+          review_id
+          question_id
+          Response
+        }
+      }
+    }
+
+  }
+  
