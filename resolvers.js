@@ -64,6 +64,7 @@ const resolverMap = {
               review = {
                 id,
                 status: r.Status,
+                status_date: new Date(r.Status_Date).toISOString(),
                 supervisor_id: r.EmpSupID,
                 employee_id: r.EmpID,
                 position: r.Position,
@@ -141,6 +142,7 @@ const resolverMap = {
             const review = {
               id: r.R_ID,
               status: r.Status,
+              status_date: new Date(r.Status_Date).toISOString(),
               supervisor_id: r.SupID,
               employee_id: r.EmpID,
               position: r.Position,

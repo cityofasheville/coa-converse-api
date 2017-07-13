@@ -4,8 +4,6 @@ const { makeExecutableSchema } = require('graphql-tools');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 require('dotenv').config();
-const pg = require('pg');
-const Pool = pg.Pool;
 
 
 console.log('Build the schema');
@@ -71,9 +69,6 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     };
   }
   return firebase.auth().verifyIdToken(req.headers.authorization).then((decodedToken) => {
-    const groups = Groups.getGroupsByEmail(decodedToken.email);
-    const ss = MySimpliCity.getSubscriptions(decodedToken.email, groups);
-    const subscriptions = JSON.stringify(ss);
     console.log('auth-verify');
     return {
       schema: executableSchema,
@@ -84,8 +79,6 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
         uid: decodedToken.uid,
         name: decodedToken.name,
         email: decodedToken.email,
-        groups,
-        subscriptions,
       },
     };
   }).catch((error) => {

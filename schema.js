@@ -20,6 +20,7 @@ const baseSchema = `
   type Review {
     id: Int!
     status: String!
+    status_date: String
     supervisor_id: Int!
     employee_id: Int!
     position: String
