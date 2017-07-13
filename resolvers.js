@@ -6,7 +6,7 @@ function getEmployee(id, pool) {
     .execute('avp_Get_Employee')
     .then(result => {
       const e = result.recordset[0];
-      return {
+      return Promise.resolve({
         id,
         active: e.Active,
         name: e.Employee,
@@ -14,6 +14,7 @@ function getEmployee(id, pool) {
         position: e.Position,
         department: e.Department,
         division: e.Division,
+        current_review: e.CurrentReview,
         last_reviewed: new Date(e.LastReviewed).toISOString(),
         review_by: new Date(e.ReviewBy).toISOString(),
         supervisor_id: e.SupID,
@@ -21,12 +22,51 @@ function getEmployee(id, pool) {
         supervisor_email: e.Sup_Email,
         employees: [],
         reviews: null,
-      };
+      });
     })
     .catch(err => {
       console.log(`Error getting employee: ${err}`);
+      return Promise.resolve({ error: `Error getting employee: ${err}` });
     });
 }
+
+function loadReview(r, review) {
+  let nreview;
+  if (review.status === null) {
+    nreview = {
+      id: r.R_ID,
+      status: r.Status,
+      status_date: new Date(r.Status_Date).toISOString(),
+      supervisor_id: r.EmpSupID,
+      employee_id: r.EmpID,
+      position: r.Position,
+      periodStart: new Date(r.Period_Start).toISOString(),
+      periodEnd: new Date(r.Period_End).toISOString(),
+      reviewer_name: r.Reviewer,
+      employee_name: r.Employee,
+      questions: [],
+      responses: [
+        {
+          question_id: null,
+          Response: r.Response,
+        },
+      ],
+    };
+  } else {
+    nreview = Object.assign({}, review);
+  }
+  nreview.questions.push(
+    {
+      id: r.Q_ID,
+      type: r.QT_Type,
+      question: r.QT_Question,
+      answer: r.Answer,
+      required: r.Required,
+    }
+  );
+  return nreview;
+}
+
 const resolverMap = {
   Query: {
     employee(obj, args, context) {
@@ -34,6 +74,10 @@ const resolverMap = {
       if (args.hasOwnProperty('id')) {
         return getEmployee(args.id, pool);
       } else if (context.email !== null) {
+        if (context.employee_id !== null) {
+          return getEmployee(context.employee_id, pool);
+        }
+        // I think this block of code goes away now.
         const query = `select EmpID from UserMap where Email = '${context.email}'`;
         return pool.request()
         .query(query)
@@ -54,47 +98,88 @@ const resolverMap = {
     review(obj, args, context) {
       const pool = context.pool;
       const id = args.id;
-      return pool.request()
-        .input('ReviewID', sql.Int, id)
-        .execute('avp_get_review')
-        .then((result) => {
-          let review = null;
-          result.recordset.forEach(r => {
-            if (review === null) {
-              review = {
-                id,
-                status: r.Status,
-                status_date: new Date(r.Status_Date).toISOString(),
-                supervisor_id: r.EmpSupID,
-                employee_id: r.EmpID,
-                position: r.Position,
-                periodStart: new Date(r.Period_Start).toISOString(),
-                periodEnd: new Date(r.Period_End).toISOString(),
-                reviewer_name: r.Reviewer,
-                employee_name: r.Employee,
-                questions: [],
-                responses: [
-                  {
-                    question_id: null,
-                    Response: r.Response,
-                  },
-                ],
-              };
-            }
-            review.questions.push(
-              {
-                id: r.Q_ID,
-                type: r.QT_Type,
-                question: r.QT_Question,
-                answer: r.Answer,
-                required: r.Required,
-              }
-            );
+      if (args.hasOwnProperty('id')) {
+        return pool.request()
+          .input('ReviewID', sql.Int, id)
+          .execute('avp_get_review')
+          .then((result) => {
+            let review = {
+              status: null,
+            };
+            result.recordset.forEach(r => {
+              review = loadReview(r, review);
+            });
+            return review;
+          })
+          .catch(err => {
+            console.log(`Error doing review query: ${err}`);
           });
-          return review;
-        })
-        .catch(err => {
-          console.log(`Error doing review query: ${err}`);
+      }
+      // Get based on the employee ID
+      let employeeId = context.employee_id;
+      if (args.hasOwnProperty('employee_id')) {
+        employeeId = args.employee_id;
+      }
+      return getEmployee(employeeId, pool)
+        .then(employee => {
+          let currentReview = employee.current_review;
+          if (currentReview === null || currentReview === 0) {
+            const t1 = new Date();
+            const t1s = `${t1.getFullYear()}-${t1.getMonth() + 1}-${t1.getDate()}`;
+            const t2 = new Date(t1);
+            t2.setDate(t1.getDate() + 90);
+            const t2s = `${t2.getFullYear()}-${t2.getMonth() + 1}-${t2.getDate()}`;
+            const thing = {
+              employeeId,
+              supervisorId: employee.supervisor_id,
+              t1s,
+              t2s,
+            };
+            return pool.request()
+            .input('EmpID', sql.Int, employeeId)
+            .input('SupID', sql.Int, employee.supervisor_id)
+            .input('RT_ID', sql.Int, 2)
+            .input('PeriodStart', sql.Date, t1s)
+            .input('PeriodEnd', sql.Date, t2s)
+            .output('R_ID', sql.Int)
+            .execute('avp_New_Review')
+            .then(result => {
+              currentReview = result.output.R_ID;
+              return pool.request()
+                .input('ReviewID', sql.Int, currentReview)
+                .execute('avp_get_review')
+                .then((result2) => {
+                  let review = {
+                    status: null,
+                  };
+                  result2.recordset.forEach(r => {
+                    review = loadReview(r, review);
+                  });
+                  return review;
+                })
+                .catch(err => {
+                  console.log(`Error doing review query: ${err}`);
+                });
+            })
+            .catch(err => {
+              console.log(`ERROR CALLING NEW REVIEW: ${err}`);
+            });
+          }
+          return pool.request()
+            .input('ReviewID', sql.Int, currentReview)
+            .execute('avp_get_review')
+            .then((result2) => {
+              let review = {
+                status: null,
+              };
+              result2.recordset.forEach(r => {
+                review = loadReview(r, review);
+              });
+              return review;
+            })
+            .catch(err => {
+              console.log(`Error doing review query: ${err}`);
+            });
         });
     },
   },

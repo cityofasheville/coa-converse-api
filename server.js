@@ -58,6 +58,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
       schema: executableSchema,
       context: {
         pool,
+        employee_id: '1316',
         loggedin: false,
         token: null,
         uid: null,
@@ -70,25 +71,37 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   }
   return firebase.auth().verifyIdToken(req.headers.authorization).then((decodedToken) => {
     console.log('auth-verify');
-    return {
-      schema: executableSchema,
-      context: {
-        pool,
-        loggedin: true,
-        token: req.headers.authorization,
-        uid: decodedToken.uid,
-        name: decodedToken.name,
-        email: decodedToken.email,
-      },
-    };
+    // Now we need to look up the employee ID
+    const query = `select EmpID from UserMap where Email = '${context.email}'`;
+    return pool.request()
+    .query(query)
+    .then(result => {
+      console.log(result);
+      if (result.recordset.length > 0) {
+        return {
+          schema: executableSchema,
+          context: {
+            pool,
+            employee_id: result.recordset[0].EmpID,
+            loggedin: true,
+            token: req.headers.authorization,
+            uid: decodedToken.uid,
+            name: decodedToken.name,
+            email: decodedToken.email,
+          },
+        };
+      }
+      return null;
+    });
   }).catch((error) => {
     if (req.headers.authorization !== 'null') {
-      console.log(`Error decoding firebase token: ${JSON.stringify(error)}`);
+      console.log(`Error decoding authentication token: ${JSON.stringify(error)}`);
     }
     return {
       schema: executableSchema,
       context: {
         pool,
+        employee_id: '1316',
         loggedin: false,
         token: null,
         uid: null,

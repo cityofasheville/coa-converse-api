@@ -8,6 +8,7 @@ const baseSchema = `
     position: String
     department: String
     division: String
+    current_review: Int
     last_reviewed: String
     review_by: String
     supervisor_id: Int!
@@ -49,7 +50,7 @@ const baseSchema = `
 
   type Query {
     employee ( id: Int ): Employee
-    review ( id: Int ): Review
+    review ( id: Int, employee_id: Int ): Review
   }
 `;
 
