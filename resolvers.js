@@ -68,6 +68,35 @@ function loadReview(r, review) {
 }
 
 const resolverMap = {
+  Mutation: {
+    updateReview(root, args, context) {
+      console.log(args);
+      const rId = args.id;
+      const inRev = args.review;
+      let uAll = null;
+      let seq = Promise.resolve(null);
+      if (inRev.hasOwnProperty('periodStart') || inRev.hasOwnProperty('periodEnd')) {
+        if (inRev.hasOwnProperty('periodStart')) {
+          uAll = `SET Period_Start = '${inRev.periodStart}'`;
+        }
+        if (inRev.hasOwnProperty('periodEnd')) {
+          uAll = (uAll !== null) ? uAll = uAll + ', ' : 'SET ';
+          uAll += `Period_End = '${inRev.periodEnd}'`;
+        }
+        const revQ = `update Reviews ${uAll} WHERE R_ID = ${rId}`;
+        console.log(revQ);
+        seq = context.pool.request()
+        .query(revQ)
+        .then(revRes => {
+          console.log(revRes);
+        })
+        .catch(revErr => {
+          console.log('ERROR!');
+          console.log(revErr);
+        });
+      }
+    },
+  },
   Query: {
     employee(obj, args, context) {
       const pool = context.pool;
