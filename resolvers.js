@@ -74,9 +74,9 @@ const resolverMap = {
       const rId = args.id;
       const inRev = args.review;
       let uAll = { error: false };
-      let seq = Promise.resolve(null);
+      let seq = Promise.resolve({ error: false });
       if (inRev.hasOwnProperty('periodStart') || inRev.hasOwnProperty('periodEnd')) {
-        // Need to test for valid input.
+        // TODO: Need to test for valid input.
         if (inRev.hasOwnProperty('periodStart')) {
           uAll = `SET Period_Start = '${inRev.periodStart}'`;
         }
@@ -85,25 +85,88 @@ const resolverMap = {
           uAll += `Period_End = '${inRev.periodEnd}'`;
         }
         const revQ = `update Reviews ${uAll} WHERE R_ID = ${rId}`;
-        console.log(revQ);
         seq = context.pool.request()
         .query(revQ)
         .then(revRes => {
-          console.log(revRes);
-          // Should at least test that we revRes.rowsAffected[0] = 1
-          Promise.resolve({ error: false });
+          if (revRes.rowsAffected === null || revRes.rowsAffected[0] !== 1) {
+            return Promise.resolve({ error: true, errorString: 'Error updating period' });
+          }
+          return Promise.resolve({ error: false });
         })
         .catch(revErr => {
           console.log('ERROR!');
           console.log(revErr);
-          Promise.resolve({ error: true, errorString: revErr });
+          return Promise.resolve({ error: true, errorString: revErr });
         });
       }
-      seq.next(res1 => {
-        if (res1.error) {
-          return Promise.resolve(res1);
+      return seq.then(res1 => { // Deal with the questions
+        if (!res1.error && inRev.questions !== null && inRev.questions.length > 0) {
+          const updateQuestions = inRev.questions.map(q => {
+            const qId = q.id;
+            const answer = (q.answer !== null) ? q.answer : '';
+            const qQ = `UPDATE Questions SET Answer = '${answer}' WHERE Q_ID = ${qId}`;
+            return context.pool.request()
+            .query(qQ)
+            .then(qRes => {
+              if (qRes.rowsAffected === null || qRes.rowsAffected[0] !== 1) {
+                return Promise.resolve({
+                  error: true,
+                  errorString: `Error updating question ${qId}`,
+                });
+              }
+              return Promise.resolve({ error: false });
+            });
+          });
+          return Promise.all(updateQuestions);
         }
-        return Promise.all();
+        return Promise.resolve(res1);
+      })
+      .then(res2 => { // Deal with response
+        if (!res2.error && inRev.responses !== null && inRev.responses.length > 0) {
+          let qId = null;
+          let qSnippet = '';
+          if (inRev.responses[0].hasOwnProperty('question_id')) {
+            qId = inRev.responses[0].question_id;
+          }
+          if (qId !== null) qSnippet = ` AND Q_ID=${qId}`;
+          const respQ = `UPDATE Responses SET Response = '${inRev.responses[0].Response}' 
+                         WHERE ( R_ID=${rId} ${qSnippet} )`;
+          return context.pool.request()
+          .query(respQ)
+          .then(respRes => {
+            if (respRes.rowsAffected === null || respRes.rowsAffected[0] !== 1) {
+              return Promise.resolve({ error: true, errorString: 'Error updating response' });
+            }
+            return Promise.resolve({ error: false });
+          });
+        }
+        return Promise.resolve(res2);
+      })
+      .then(res3 => { // All done - either error or return the updated review
+        if (res3.error) {
+          return Promise.resolve(res3);
+        }
+        return context.pool.request()
+          .input('ReviewID', sql.Int, args.id)
+          .execute('avp_get_review')
+          .then((result) => {
+            let review = {
+              status: null,
+            };
+            result.recordset.forEach(r => {
+              review = loadReview(r, review);
+            });
+            return Promise.resolve(review);
+          })
+          .catch(err => {
+            console.log(`Error doing review query: ${err}`);
+          });
+      })
+      .then(xx => {
+        return xx;
+      })
+      .catch(err => {
+        console.log(`Error at end: ${err}`);
       });
     },
   },
@@ -168,12 +231,7 @@ const resolverMap = {
             const t2 = new Date(t1);
             t2.setDate(t1.getDate() + 90);
             const t2s = `${t2.getFullYear()}-${t2.getMonth() + 1}-${t2.getDate()}`;
-            const thing = {
-              employeeId,
-              supervisorId: employee.supervisor_id,
-              t1s,
-              t2s,
-            };
+
             return pool.request()
             .input('EmpID', sql.Int, employeeId)
             .input('SupID', sql.Int, employee.supervisor_id)
