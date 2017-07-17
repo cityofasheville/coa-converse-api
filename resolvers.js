@@ -88,7 +88,9 @@ const resolverMap = {
         seq = context.pool.request()
         .query(revQ)
         .then(revRes => {
-          // Should at least test that we revRes.rowsAffected[0] = 1
+          if (revRes.rowsAffected === null || revRes.rowsAffected[0] !== 1) {
+            return Promise.resolve({ error: true, errorString: 'Error updating period' });
+          }
           return Promise.resolve({ error: false });
         })
         .catch(revErr => {
@@ -106,6 +108,12 @@ const resolverMap = {
             return context.pool.request()
             .query(qQ)
             .then(qRes => {
+              if (qRes.rowsAffected === null || qRes.rowsAffected[0] !== 1) {
+                return Promise.resolve({
+                  error: true,
+                  errorString: `Error updating question ${qId}`,
+                });
+              }
               return Promise.resolve({ error: false });
             });
           });
@@ -126,6 +134,9 @@ const resolverMap = {
           return context.pool.request()
           .query(respQ)
           .then(respRes => {
+            if (respRes.rowsAffected === null || respRes.rowsAffected[0] !== 1) {
+              return Promise.resolve({ error: true, errorString: 'Error updating response' });
+            }
             return Promise.resolve({ error: false });
           });
         }
@@ -220,12 +231,7 @@ const resolverMap = {
             const t2 = new Date(t1);
             t2.setDate(t1.getDate() + 90);
             const t2s = `${t2.getFullYear()}-${t2.getMonth() + 1}-${t2.getDate()}`;
-            const thing = {
-              employeeId,
-              supervisorId: employee.supervisor_id,
-              t1s,
-              t2s,
-            };
+
             return pool.request()
             .input('EmpID', sql.Int, employeeId)
             .input('SupID', sql.Int, employee.supervisor_id)
