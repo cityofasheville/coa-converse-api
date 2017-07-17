@@ -51,12 +51,12 @@ mutation {
     questions: [
       {
         id: 136
-        answer: ""
+        answer: "I am a walrus"
       }
     ]
     responses: [
     	{
-     	 Response: ""
+     	 Response: "Oh no I dint!"
       }
     ]
   }) {

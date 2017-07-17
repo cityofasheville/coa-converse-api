@@ -74,9 +74,9 @@ const resolverMap = {
       const rId = args.id;
       const inRev = args.review;
       let uAll = { error: false };
-      let seq = Promise.resolve(null);
+      let seq = Promise.resolve({ error: false });
       if (inRev.hasOwnProperty('periodStart') || inRev.hasOwnProperty('periodEnd')) {
-        // Need to test for valid input.
+        // TODO: Need to test for valid input.
         if (inRev.hasOwnProperty('periodStart')) {
           uAll = `SET Period_Start = '${inRev.periodStart}'`;
         }
@@ -85,25 +85,84 @@ const resolverMap = {
           uAll += `Period_End = '${inRev.periodEnd}'`;
         }
         const revQ = `update Reviews ${uAll} WHERE R_ID = ${rId}`;
-        console.log(revQ);
         seq = context.pool.request()
         .query(revQ)
         .then(revRes => {
-          console.log(revRes);
+          console.log('Back from updating the review');
           // Should at least test that we revRes.rowsAffected[0] = 1
-          Promise.resolve({ error: false });
+          return Promise.resolve({ error: false });
         })
         .catch(revErr => {
           console.log('ERROR!');
           console.log(revErr);
-          Promise.resolve({ error: true, errorString: revErr });
+          return Promise.resolve({ error: true, errorString: revErr });
         });
+        console.log(`At first end with seq type = ${typeof seq}`);
       }
-      seq.next(res1 => {
-        if (res1.error) {
-          return Promise.resolve(res1);
+      seq.then(res1 => { // Deal with the questions
+        console.log('In questions section');
+        if (!res1.error && inRev.questions !== null && inRev.questions.length > 0) {
+          const updateQuestions = inRev.questions.map(q => {
+            const qId = q.id;
+            const answer = (q.answer !== null) ? q.answer : '';
+            const qQ = `UPDATE Questions SET Answer = '${answer}' WHERE Q_ID = ${qId}`;
+            return context.pool.request()
+            .query(qQ)
+            .then(qRes => {
+              return Promise.resolve({ error: false });
+            });
+          });
+          console.log('Now promise it all!');
+          return Promise.all(updateQuestions);
         }
-        return Promise.all();
+        console.log('Why am I here?');
+        return Promise.resolve(res1);
+      })
+      .then(res2 => { // Deal with response
+        console.log('And now do the response');
+        if (!res2.error && inRev.responses !== null && inRev.responses.length > 0) {
+          let qId = null;
+          let qSnippet = '';
+          if (inRev.responses[0].hasOwnProperty('question_id')) {
+            qId = inRev.responses[0].question_id;
+          }
+          if (qId !== null) qSnippet = ` AND Q_ID=${qId}`;
+          const respQ = `UPDATE Responses SET Response = '${inRev.responses[0].Response}' 
+                         WHERE ( R_ID=${rId} ${qSnippet} )`;
+          return context.pool.request()
+          .query(respQ)
+          .then(respRes => {
+            return Promise.resolve({ error: false });
+          });
+        }
+        return Promise.resolve(res2);
+      })
+      .then(res3 => { // All done - either error or return the updated review
+        console.log('Now reread the review');
+        if (res3.error) {
+          console.log(`Returning with res3.error = ${res3.error}`);
+          return Promise.resolve(res3);
+        }
+        return context.pool.request()
+          .input('ReviewID', sql.Int, args.id)
+          .execute('avp_get_review')
+          .then((result) => {
+            let review = {
+              status: null,
+            };
+            result.recordset.forEach(r => {
+              review = loadReview(r, review);
+            });
+            console.log('Got the review');
+            console.log(review);
+            return Promise.resolve(review);
+          })
+          .catch(err => {
+            console.log(`Error doing review query: ${err}`);
+          });
+      })
+      .catch(err => {
+        console.log(`Error at end: ${err}`);
       });
     },
   },
