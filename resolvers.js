@@ -88,7 +88,6 @@ const resolverMap = {
         seq = context.pool.request()
         .query(revQ)
         .then(revRes => {
-          console.log('Back from updating the review');
           // Should at least test that we revRes.rowsAffected[0] = 1
           return Promise.resolve({ error: false });
         })
@@ -97,10 +96,8 @@ const resolverMap = {
           console.log(revErr);
           return Promise.resolve({ error: true, errorString: revErr });
         });
-        console.log(`At first end with seq type = ${typeof seq}`);
       }
-      seq.then(res1 => { // Deal with the questions
-        console.log('In questions section');
+      return seq.then(res1 => { // Deal with the questions
         if (!res1.error && inRev.questions !== null && inRev.questions.length > 0) {
           const updateQuestions = inRev.questions.map(q => {
             const qId = q.id;
@@ -112,14 +109,11 @@ const resolverMap = {
               return Promise.resolve({ error: false });
             });
           });
-          console.log('Now promise it all!');
           return Promise.all(updateQuestions);
         }
-        console.log('Why am I here?');
         return Promise.resolve(res1);
       })
       .then(res2 => { // Deal with response
-        console.log('And now do the response');
         if (!res2.error && inRev.responses !== null && inRev.responses.length > 0) {
           let qId = null;
           let qSnippet = '';
@@ -138,9 +132,7 @@ const resolverMap = {
         return Promise.resolve(res2);
       })
       .then(res3 => { // All done - either error or return the updated review
-        console.log('Now reread the review');
         if (res3.error) {
-          console.log(`Returning with res3.error = ${res3.error}`);
           return Promise.resolve(res3);
         }
         return context.pool.request()
@@ -153,13 +145,14 @@ const resolverMap = {
             result.recordset.forEach(r => {
               review = loadReview(r, review);
             });
-            console.log('Got the review');
-            console.log(review);
             return Promise.resolve(review);
           })
           .catch(err => {
             console.log(`Error doing review query: ${err}`);
           });
+      })
+      .then(xx => {
+        return xx;
       })
       .catch(err => {
         console.log(`Error at end: ${err}`);
