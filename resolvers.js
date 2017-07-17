@@ -73,14 +73,15 @@ const resolverMap = {
       console.log(args);
       const rId = args.id;
       const inRev = args.review;
-      let uAll = null;
+      let uAll = { error: false };
       let seq = Promise.resolve(null);
       if (inRev.hasOwnProperty('periodStart') || inRev.hasOwnProperty('periodEnd')) {
+        // Need to test for valid input.
         if (inRev.hasOwnProperty('periodStart')) {
           uAll = `SET Period_Start = '${inRev.periodStart}'`;
         }
         if (inRev.hasOwnProperty('periodEnd')) {
-          uAll = (uAll !== null) ? uAll = uAll + ', ' : 'SET ';
+          uAll = (uAll !== null) ? `${uAll}, ` : 'SET ';
           uAll += `Period_End = '${inRev.periodEnd}'`;
         }
         const revQ = `update Reviews ${uAll} WHERE R_ID = ${rId}`;
@@ -89,12 +90,21 @@ const resolverMap = {
         .query(revQ)
         .then(revRes => {
           console.log(revRes);
+          // Should at least test that we revRes.rowsAffected[0] = 1
+          Promise.resolve({ error: false });
         })
         .catch(revErr => {
           console.log('ERROR!');
           console.log(revErr);
+          Promise.resolve({ error: true, errorString: revErr });
         });
       }
+      seq.next(res1 => {
+        if (res1.error) {
+          return Promise.resolve(res1);
+        }
+        return Promise.all();
+      });
     },
   },
   Query: {
