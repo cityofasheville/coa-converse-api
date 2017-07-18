@@ -72,7 +72,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   return firebase.auth().verifyIdToken(req.headers.authorization).then((decodedToken) => {
     console.log('auth-verify');
     // Now we need to look up the employee ID
-    const query = `select EmpID from UserMap where Email = '${context.email}'`;
+    const query = `select EmpID from UserMap where Email = '${decodedToken.email}'`;
     return pool.request()
     .query(query)
     .then(result => {
