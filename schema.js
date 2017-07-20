@@ -10,6 +10,7 @@ const baseSchema = `
     division: String
     current_review: Int
     last_reviewed: String
+    reviewable: Boolean
     review_by: String
     supervisor_id: Int!
     supervisor_name: String
