@@ -70,23 +70,32 @@ function loadReview(r, review) {
 const resolverMap = {
   Mutation: {
     updateReview(root, args, context) {
-      console.log(args);
       const rId = args.id;
       const inRev = args.review;
-      let uAll = { error: false };
       let seq = Promise.resolve({ error: false });
-      if (inRev.hasOwnProperty('periodStart') || inRev.hasOwnProperty('periodEnd')) {
-        // TODO: Need to test for valid input.
-        if (inRev.hasOwnProperty('periodStart')) {
-          uAll = `SET Period_Start = '${inRev.periodStart}'`;
+
+      const doStart = inRev.hasOwnProperty('periodStart');
+      const doEnd = inRev.hasOwnProperty('periodEnd');
+      if (doStart || doEnd) {
+        seq = context.pool.request(); // eslint-disable-line new-cap
+        if (doStart && doEnd) {
+          seq = seq
+          .input('rid', sql.Int, rId)
+          .input('start', sql.Date, inRev.periodStart)
+          .input('end', sql.Date, inRev.periodEnd)
+          .query('UPDATE Reviews SET Period_Start = @start, Period_End = @end WHERE R_ID = @rid');
+        } else if (doStart) {
+          seq = seq
+          .input('rid', sql.Int, rId)
+          .input('start', sql.Date, inRev.periodStart)
+          .query('UPDATE Reviews SET Period_Start = @start WHERE R_ID = @rid');
+        } else if (doStart) {
+          seq = seq
+          .input('end', sql.Date, inRev.periodEnd)
+          .query('UPDATE Reviews SET Period_End = @end WHERE R_ID = @rid');
         }
-        if (inRev.hasOwnProperty('periodEnd')) {
-          uAll = (uAll !== null) ? `${uAll}, ` : 'SET ';
-          uAll += `Period_End = '${inRev.periodEnd}'`;
-        }
-        const revQ = `update Reviews ${uAll} WHERE R_ID = ${rId}`;
-        seq = context.pool.request()
-        .query(revQ)
+
+        seq = seq
         .then(revRes => {
           if (revRes.rowsAffected === null || revRes.rowsAffected[0] !== 1) {
             return Promise.resolve({ error: true, errorString: 'Error updating period' });
@@ -104,9 +113,10 @@ const resolverMap = {
           const updateQuestions = inRev.questions.map(q => {
             const qId = q.id;
             const answer = (q.answer !== null) ? q.answer : '';
-            const qQ = `UPDATE Questions SET Answer = '${answer}' WHERE Q_ID = ${qId}`;
             return context.pool.request()
-            .query(qQ)
+            .input('answer', sql.NVarChar, answer)
+            .input('qid', sql.Int, qId)
+            .query('UPDATE Questions SET Answer = @answer WHERE Q_ID = @qid')
             .then(qRes => {
               if (qRes.rowsAffected === null || qRes.rowsAffected[0] !== 1) {
                 return Promise.resolve({
@@ -123,16 +133,25 @@ const resolverMap = {
       })
       .then(res2 => { // Deal with response
         if (!res2.error && inRev.responses !== null && inRev.responses.length > 0) {
+          let req = context.pool.request();
           let qId = null;
           let qSnippet = '';
           if (inRev.responses[0].hasOwnProperty('question_id')) {
             qId = inRev.responses[0].question_id;
           }
-          if (qId !== null) qSnippet = ` AND Q_ID=${qId}`;
-          const respQ = `UPDATE Responses SET Response = '${inRev.responses[0].Response}' 
-                         WHERE ( R_ID=${rId} ${qSnippet} )`;
-          return context.pool.request()
-          .query(respQ)
+          if (qId === null) {
+            req = req
+            .input('response', sql.NVarChar, inRev.responses[0].Response)
+            .input('rid', sql.Int, rId)
+            .query('UPDATE Responses SET Response = @response WHERE R_ID = @rid');
+          } else {
+            req = req
+            .input('response', sql.NVarChar, inRev.responses[0].Response)
+            .input('rid', sql.Int, rId)
+            .input('qid', sql.Int, qId)
+            .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
+          }
+          return req
           .then(respRes => {
             if (respRes.rowsAffected === null || respRes.rowsAffected[0] !== 1) {
               return Promise.resolve({ error: true, errorString: 'Error updating response' });
@@ -162,9 +181,6 @@ const resolverMap = {
             console.log(`Error doing review query: ${err}`);
           });
       })
-      .then(xx => {
-        return xx;
-      })
       .catch(err => {
         console.log(`Error at end: ${err}`);
       });
@@ -180,8 +196,9 @@ const resolverMap = {
           return getEmployee(context.employee_id, pool);
         }
         // I think this block of code goes away now.
-        const query = `select EmpID from UserMap where Email = '${context.email}'`;
+        const query = 'select EmpID from UserMap where Email = @email';
         return pool.request()
+        .input('email', sql.NVarChar, context.email)
         .query(query)
         .then(result => {
           console.log(result);
@@ -367,7 +384,6 @@ const resolverMap = {
       return obj.questions;
     },
     responses(obj, args, context) {
-      console.log('Looking up responses on review');
       if (obj.responses === null) {
         const pool = context.pool;
         return pool.request()
