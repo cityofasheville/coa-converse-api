@@ -1,12 +1,12 @@
 # Install the services
-cp ./simplicitygql1.service /etc/systemd/system/
-cp ./simplicitygql2.service /etc/systemd/system/
+cp ./converse1.service /etc/systemd/system/
+cp ./converse2.service /etc/systemd/system/
 
 # Start the services and enable starting after reboot
-systemctl start simplicitygql1
-systemctl enable simplicitygql1
-systemctl start simplicitygql2
-systemctl enable simplicitygql2
+systemctl start converse1
+systemctl enable converse1
+systemctl start converse2
+systemctl enable converse2
 
 # Install the NGINX configuration file
 cp ./simplicitygql.conf /etc/nginx/conf.d/
