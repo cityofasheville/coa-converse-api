@@ -68,6 +68,26 @@ function loadReview(r, review) {
   return nreview;
 }
 
+function getReview(id) {
+  return context.pool.request()
+  .input('rid', sql.Int, id)
+  .query('SELECT * from Reviews WHERE R_ID = @rid')
+  .then(revResult => {
+    const r = revResult.recordset[0];
+    const review = {
+      id: r.R_ID,
+      status: r.Status,
+      status_date: new Date(r.Status_Date).toISOString(),
+      periodStart: new Date(r.Period_Start).toISOString(),
+      periodEnd: new Date(r.Period_End).toISOString(),
+      reviewer_name: r.Reviewer,
+    };
+    return Promise.resolve(review);
+  })
+  .catch(err => {
+    return Promise.resolve({ error: true, errorString: err });
+  });
+}
 const resolverMap = {
   Mutation: {
     updateReview(root, args, context) {
@@ -75,26 +95,7 @@ const resolverMap = {
       const inRev = args.review;
       let seq = Promise.resolve({ error: false });
       let newStatus = null;
-      seq = context.pool.request()
-      .input('rid', sql.Int, rId)
-      .query('SELECT * from Reviews WHERE R_ID = @rid')
-      .then(revResult => {
-        const r = revResult.recordset[0];
-        const review = {
-          id: r.R_ID,
-          status: r.Status,
-          status_date: new Date(r.Status_Date).toISOString(),
-          periodStart: new Date(r.Period_Start).toISOString(),
-          periodEnd: new Date(r.Period_End).toISOString(),
-          reviewer_name: r.Reviewer,
-        };
-        return Promise.resolve(review);
-      })
-      .catch(err => {
-        return Promise.resolve({ error: true, errorString: err });
-      });
-
-      seq = seq
+      seq = getReview(rId)
       .then(review => {
         let status = review.status;
         let periodStart = review.periodStart;
@@ -108,7 +109,7 @@ const resolverMap = {
             console.log(`The new status is ${newStatus}`);
             if (!(newStatus === 'Open' || newStatus === 'Ready' ||
                   newStatus === 'Acknowledged' || newStatus === 'Closed')) {
-              return Promise.resolve({ error: true, errorString: `Invalid status ${newStatus}`});
+              return Promise.resolve({ error: true, errorString: `Invalid status ${newStatus}` });
             }
             if (status === 'Open') {
               if (newStatus !== 'Ready') {
