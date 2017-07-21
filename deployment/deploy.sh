@@ -9,6 +9,6 @@ systemctl start converse2
 systemctl enable converse2
 
 # Install the NGINX configuration file
-cp ./simplicitygql.conf /etc/nginx/conf.d/
+cp ./converse.conf /etc/nginx/conf.d/
 sudo systemctl restart nginx
 
