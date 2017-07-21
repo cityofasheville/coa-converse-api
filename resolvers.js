@@ -74,41 +74,97 @@ const resolverMap = {
       const rId = args.id;
       const inRev = args.review;
       let seq = Promise.resolve({ error: false });
+      let newStatus = null;
+      seq = context.pool.request()
+      .input('rid', sql.Int, rId)
+      .query('SELECT * from Reviews WHERE R_ID = @rid')
+      .then(revResult => {
+        const r = revResult.recordset[0];
+        const review = {
+          id: r.R_ID,
+          status: r.Status,
+          status_date: new Date(r.Status_Date).toISOString(),
+          periodStart: new Date(r.Period_Start).toISOString(),
+          periodEnd: new Date(r.Period_End).toISOString(),
+          reviewer_name: r.Reviewer,
+        };
+        return Promise.resolve(review);
+      })
+      .catch(err => {
+        return Promise.resolve({ error: true, errorString: err });
+      });
 
-      const doStart = inRev.hasOwnProperty('periodStart');
-      const doEnd = inRev.hasOwnProperty('periodEnd');
-      if (doStart || doEnd) {
-        seq = context.pool.request(); // eslint-disable-line new-cap
-        if (doStart && doEnd) {
-          seq = seq
-          .input('rid', sql.Int, rId)
-          .input('start', sql.Date, inRev.periodStart)
-          .input('end', sql.Date, inRev.periodEnd)
-          .query('UPDATE Reviews SET Period_Start = @start, Period_End = @end WHERE R_ID = @rid');
-        } else if (doStart) {
-          seq = seq
-          .input('rid', sql.Int, rId)
-          .input('start', sql.Date, inRev.periodStart)
-          .query('UPDATE Reviews SET Period_Start = @start WHERE R_ID = @rid');
-        } else if (doStart) {
-          seq = seq
-          .input('end', sql.Date, inRev.periodEnd)
-          .query('UPDATE Reviews SET Period_End = @end WHERE R_ID = @rid');
+      seq = seq
+      .then(review => {
+        let status = review.status;
+        let periodStart = review.periodStart;
+        let periodEnd = review.periodEnd;
+        let doSave = false;
+        if (inRev.hasOwnProperty('status')) {
+          newStatus = inRev.status;
+          if (review.status !== newStatus) {
+            doSave = true;
+            let errorString = null;
+            console.log(`The new status is ${newStatus}`);
+            if (!(newStatus === 'Open' || newStatus === 'Ready' ||
+                  newStatus === 'Acknowledged' || newStatus === 'Closed')) {
+              return Promise.resolve({ error: true, errorString: `Invalid status ${newStatus}`});
+            }
+            if (status === 'Open') {
+              if (newStatus !== 'Ready') {
+                errorString = `Invalid status transition from ${status} to ${newStatus}`;
+              }
+            } else if (status === 'Ready') {
+              if (newStatus !== 'Open' && newStatus !== 'Acknowledged') {
+                errorString = `Invalid status transition from ${status} to ${newStatus}`;
+              }
+            } else if (status === 'Acknowledged') {
+              if (newStatus !== 'Open' && newStatus !== 'Closed') {
+                errorString = `Invalid status transition from ${status} to ${newStatus}`;
+              }
+            } else if (status === 'Closed') {
+              errorString = 'Status transition from Closed status is not allowed';
+            }
+            if (errorString !== null) {
+              return Promise.resolve({ error: true, errorString });
+            }
+            status = newStatus;
+            if (errorString !== null) {
+              return Promise.resolve({ error: true, errorString });
+            }
+          }
         }
 
-        seq = seq
-        .then(revRes => {
-          if (revRes.rowsAffected === null || revRes.rowsAffected[0] !== 1) {
-            return Promise.resolve({ error: true, errorString: 'Error updating period' });
-          }
-          return Promise.resolve({ error: false });
-        })
-        .catch(revErr => {
-          console.log('ERROR!');
-          console.log(revErr);
-          return Promise.resolve({ error: true, errorString: revErr });
-        });
-      }
+        if (inRev.hasOwnProperty('periodStart')) {
+          // Need to validate
+          doSave = true;
+          periodStart = inRev.periodStart;
+        }
+        if (inRev.hasOwnProperty('periodEnd')) {
+          // Need to validate
+          doSave = true;
+          periodEnd = inRev.periodEnd;
+        }
+        if (!doSave) return Promise.resolve({ error: false });
+        return context.pool.request()
+          .input('rid', sql.Int, rId)
+          .input('status', sql.NVarChar, status)
+          .input('start', sql.Date, periodStart)
+          .input('end', sql.Date, periodEnd)
+          .query('UPDATE Reviews SET Status = @status, Period_Start = @start, Period_End = @end WHERE R_ID = @rid');
+      })
+      .then(revRes => {
+        if (revRes.error) return Promise.resolve(revRes);
+        if (revRes.rowsAffected === null || revRes.rowsAffected[0] !== 1) {
+          return Promise.resolve({ error: true, errorString: 'Error updating period' });
+        }
+        return Promise.resolve({ error: false });
+      })
+      .catch(revErr => {
+        console.log('ERROR!');
+        console.log(revErr);
+        return Promise.resolve({ error: true, errorString: revErr });
+      });
       return seq.then(res1 => { // Deal with the questions
         if (!res1.error && inRev.questions !== null && inRev.questions.length > 0) {
           const updateQuestions = inRev.questions.map(q => {
@@ -136,7 +192,6 @@ const resolverMap = {
         if (!res2.error && inRev.responses !== null && inRev.responses.length > 0) {
           let req = context.pool.request();
           let qId = null;
-          let qSnippet = '';
           if (inRev.responses[0].hasOwnProperty('question_id')) {
             qId = inRev.responses[0].question_id;
           }

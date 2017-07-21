@@ -35,6 +35,7 @@ const baseSchema = `
   }
 
   input ReviewInput {
+    status: String!
     periodStart: String!
     periodEnd: String!
     questions: [QuestionInput]!
