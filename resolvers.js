@@ -68,7 +68,7 @@ function loadReview(r, review) {
   return nreview;
 }
 
-function getReview(id) {
+function getReview(id, context) {
   return context.pool.request()
   .input('rid', sql.Int, id)
   .query('SELECT * from Reviews WHERE R_ID = @rid')
@@ -95,7 +95,7 @@ const resolverMap = {
       const inRev = args.review;
       let seq = Promise.resolve({ error: false });
       let newStatus = null;
-      seq = getReview(rId)
+      seq = getReview(rId, context)
       .then(review => {
         let status = review.status;
         let periodStart = review.periodStart;
