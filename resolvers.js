@@ -274,7 +274,7 @@ const resolverMap = {
     review(obj, args, context) {
       const pool = context.pool;
       const id = args.id;
-      if (args.hasOwnProperty('id')) {
+      if (args.hasOwnProperty('id') && id !== -1) {
         return pool.request()
           .input('ReviewID', sql.Int, id)
           .execute('avp_get_review')
