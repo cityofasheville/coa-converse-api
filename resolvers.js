@@ -252,24 +252,8 @@ const resolverMap = {
         if (context.employee_id !== null) {
           return getEmployee(context.employee_id, pool);
         }
-        // I think this block of code goes away now.
-        const query = 'select EmpID from UserMap where Email = @email';
-        return pool.request()
-        .input('email', sql.NVarChar, context.email)
-        .query(query)
-        .then(result => {
-          console.log(result);
-          if (result.recordset.length > 0) {
-            const id = result.recordset[0].EmpID;
-            return getEmployee(id, pool);
-          }
-          return null;
-        })
-        .catch(err => {
-          console.log(`Error getting employee ID for email ${context.email}: ${err}`);
-        });
       }
-      return null;
+      return { errors: [{ message: 'In employee query - employee_id not set' }] };
     },
     review(obj, args, context) {
       const pool = context.pool;
