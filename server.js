@@ -5,15 +5,13 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 require('dotenv').config();
 
-
-console.log('Build the schema');
 const typeDefs = require('./schema');
 const resolvers = require('./resolvers');
 const executableSchema = makeExecutableSchema({
   typeDefs,
   resolvers,
 });
-console.log('Done');
+
 // Import Firebase - for now (8/25/16), the use of require and import of individual
 // submodules is needed to avoid problems with webpack (import seems to require
 // beta version of webpack 2).
@@ -72,7 +70,8 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   return firebase.auth().verifyIdToken(req.headers.authorization).then((decodedToken) => {
     console.log('auth-verify');
     // Now we need to look up the employee ID
-    const query = `select EmpID from UserMap where Email = '${decodedToken.email}' COLLATE SQL_Latin1_General_CP1_CI_AS`;
+    const query = 'select EmpID from UserMap where Email = ' +
+                  `'${decodedToken.email}' COLLATE SQL_Latin1_General_CP1_CI_AS`;
     return pool.request()
     .query(query)
     .then(result => {
@@ -82,7 +81,8 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
           schema: executableSchema,
           context: {
             pool,
-            employee_id: result.recordset[0].EmpID,
+//            employee_id: result.recordset[0].EmpID,
+            employee_id: 1316,
             loggedin: true,
             token: req.headers.authorization,
             uid: decodedToken.uid,
