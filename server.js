@@ -48,41 +48,54 @@ pool.connect(err => {
 const GRAPHQL_PORT = process.env.PORT || 8080;
 console.log(`The graphql port is ${GRAPHQL_PORT}`);
 const graphQLServer = express().use('*', cors());
+const baseConfig = {
+  schema: executableSchema,
+  context: {
+    pool,
+    employee_id: '1316',
+    superuser: false,
+    loggedin: false,
+    token: null,
+    uid: null,
+    name: null,
+    email: null,
+    groups: [],
+    subscriptions: null,
+  },
+};
 
 graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   if (!req.headers.authorization || req.headers.authorization === 'null') {
     console.log('NOT LOGGED IN');
-    return {
-      schema: executableSchema,
-      context: {
-        pool,
-        employee_id: '1316',
-        loggedin: false,
-        token: null,
-        uid: null,
-        name: null,
-        email: null,
-        groups: [],
-        subscriptions: null,
-      },
-    };
+    return baseConfig;
   }
-  return firebase.auth().verifyIdToken(req.headers.authorization).then((decodedToken) => {
-    console.log('auth-verify');
+  return firebase.auth().verifyIdToken(req.headers.authorization)
+  .then(decodedToken => {
     // Now we need to look up the employee ID
     const query = 'select EmpID from UserMap where Email = ' +
                   `'${decodedToken.email}' COLLATE SQL_Latin1_General_CP1_CI_AS`;
     return pool.request()
     .query(query)
-    .then(result => {
-      console.log(result);
-      if (result.recordset.length > 0) {
+    .then(res1 => {
+      if (res1.recordset.length > 0) {
+        return Promise.resolve(res1.recordset[0].EmpID);
+      }
+      throw new Error('Unable to find employee by email.');
+    })
+    .then(employeeId => {
+      return pool.request()
+      .query(`SELECT TOP(1) * FROM dbo.SuperUsers WHERE EmpID = ${employeeId}`)
+      .then(res2 => {
+        let superuser = false;
+        if (res2.recordset.length === 1) {
+          superuser = res2.recordset[0].IsSuperUser !== 0;
+        }
         return {
           schema: executableSchema,
           context: {
             pool,
-//            employee_id: result.recordset[0].EmpID,
-            employee_id: 1316,
+            employee_id: employeeId,
+            superuser,
             loggedin: true,
             token: req.headers.authorization,
             uid: decodedToken.uid,
@@ -90,29 +103,19 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
             email: decodedToken.email,
           },
         };
-      }
-      return null;
+      });
     });
-  }).catch((error) => {
+  })
+  .catch((error) => {
     if (req.headers.authorization !== 'null') {
       console.log(`Error decoding authentication token: ${JSON.stringify(error)}`);
     }
-    return {
-      schema: executableSchema,
-      context: {
-        pool,
-        employee_id: '1316',
-        loggedin: false,
-        token: null,
-        uid: null,
-        name: null,
-        email: null,
-        groups: [],
-        subscriptions: null,
-      },
-    };
+    return baseConfig;
   });
 }));
+
+
+
 
 graphQLServer.use('/graphiql', graphiqlExpress({
   endpointURL: '/graphql',
