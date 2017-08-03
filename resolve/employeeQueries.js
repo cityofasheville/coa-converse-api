@@ -1,16 +1,45 @@
 const sql = require('mssql');
 const getEmployee = require('./getEmployee.js');
 
+const operationIsAllowed = (targetId, context) => {
+  const pool = context.pool;
+  const myId = context.employee_id;
+  let isAllowed = false;
+  if (context.superuser) return Promise.resolve(true);
+  return pool.request()
+  .input('UserEmpID', sql.Int, myId)
+  .input('EmpID', sql.Int, targetId)
+  .output('May_View', sql.NChar(1))
+  .execute('avp_May_View_Emp')
+  .then(result => {
+    if (result.output.hasOwnProperty('May_View')) {
+      if (result.output.May_View === 'Y') {
+        isAllowed = true;
+      }
+    }
+    return Promise.resolve(isAllowed);
+  });
+};
+
 const employee = (obj, args, context) => {
   const pool = context.pool;
   if (args.hasOwnProperty('id')) {
-    return getEmployee(args.id, pool); // AUTH HERE
+    return operationIsAllowed(args.id, context)
+    .then(isAllowed => {
+      if (isAllowed) {
+        console.log('Operation is allowed');
+        return getEmployee(args.id, pool);
+      } else {
+        console.log('Operation is not allowed');
+        throw new Error('Employee query not allowed');
+      }
+    });
   } else if (context.email !== null) {
     if (context.employee_id !== null) {
       return getEmployee(context.employee_id, pool);
     }
   }
-  return { errors: [{ message: 'In employee query - employee_id not set' }] };
+  throw new Error('In employee query - employee_id not set');
 };
 
 const employees = (obj, args, context) => {
