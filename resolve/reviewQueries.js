@@ -2,6 +2,7 @@ const sql = require('mssql');
 const loadReview = require('./loadReview');
 const getEmployee = require('./getEmployee.js');
 const createCurrentReview = require('./createCurrentReview');
+const operationIsAllowed = require('./operationIsAllowed');
 
 const review = (obj, args, context) => {
   const pool = context.pool;
@@ -17,7 +18,16 @@ const review = (obj, args, context) => {
         result.recordset.forEach(r => {
           rev = loadReview(r, rev);
         });
-        return rev;
+        if (context.employee_id === rev.employee_id) {
+          return rev;
+        }
+        return operationIsAllowed(rev.supervisor_id, context)
+        .then(isAllowed => {
+          if (isAllowed) {
+            return rev;
+          }
+          throw new Error('Employee query not allowed');
+        });
       })
       .catch(err => {
         console.log(`Error doing review query: ${err}`);
@@ -28,7 +38,7 @@ const review = (obj, args, context) => {
   if (args.hasOwnProperty('employee_id')) {
     employeeId = args.employee_id;
   }
-  // AUTH HERE
+  // AUTH HERE!!!!
   return getEmployee(employeeId, pool)
     .then(emp => {
       const currentReview = emp.current_review;
