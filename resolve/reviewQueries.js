@@ -115,19 +115,31 @@ const questions = (obj, args, context) => {
     .input('ReviewID', sql.Int, obj.id)
     .execute('avp_get_review')
     .then((result) => {
-      const qs = [];
-      result.recordset.forEach(r => {
-        questions.push(
-          {
-            id: r.Q_ID,
-            type: r.QT_Type,
-            question: r.QT_Question,
-            answer: r.Answer,
-            required: r.Required,
-          }
-        );
-      });
-      return qs;
+      if (result.recordset.length > 0) {
+        let verifyAllowed;
+        const rev = result.recordset[0];
+        if (context.employee_id === rev.employee_id &&
+            context.employee_id === rev.supervisor_id) {
+          verifyAllowed = Promise.resolve(true)
+        }
+        else {
+          verifyAllowed = operationIsAllowed(rev.supervisor_id, context);
+        }
+        const qs = [];
+        result.recordset.forEach(r => {
+          questions.push(
+            {
+              id: r.Q_ID,
+              type: r.QT_Type,
+              question: r.QT_Question,
+              answer: r.Answer,
+              required: r.Required,
+            }
+          );
+        });
+        return qs;
+      }
+      throw new Error(`Review ${obj.id} not found.`);
     });
   }
   return obj.questions;
