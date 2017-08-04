@@ -31,11 +31,11 @@ const createCurrentReview = (emp, pool) => {
         return rev;
       })
       .catch(err => {
-        console.log(`Error doing review query: ${err}`);
+        throw new Error(`Error doing review query: ${err}`);
       });
   })
   .catch(err => {
-    console.log(`ERROR CALLING NEW REVIEW: ${err}`);
+    throw new Error(`ERROR CALLING NEW REVIEW: ${err}`);
   });
 };
 

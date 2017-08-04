@@ -49,7 +49,6 @@ const employees = (obj, args, context) => {
             employees: null,
             reviews: null,
           };
-          console.log(`  Employee: ${emp.name}`);
           myEmployees.push(emp);
         });
         return myEmployees;

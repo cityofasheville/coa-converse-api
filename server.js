@@ -36,14 +36,14 @@ const msconfig = {
 
 const pool = new sql.ConnectionPool(msconfig);
 pool.on('error', err => {
-  console.log(`Got ourselves a damn error: ${err}`);
+  throw new Error(`Error on database connection pool: ${err}`);
 });
 
-console.log('Here we go');
 pool.connect(err => {
-  if (err) console.log(`Error trying to create a connection pool ${err}`);
+  if (err) {
+    throw new Error(`Error trying to create a connection pool ${err}`);
+  }
 });
-
 
 const GRAPHQL_PORT = process.env.PORT || 8080;
 console.log(`The graphql port is ${GRAPHQL_PORT}`);
@@ -94,8 +94,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
           schema: executableSchema,
           context: {
             pool,
-//            employee_id: employeeId,
-            employee_id: 1316,
+            employee_id: employeeId,
             superuser,
             loggedin: true,
             token: req.headers.authorization,
@@ -110,13 +109,11 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   .catch((error) => {
     if (req.headers.authorization !== 'null') {
       console.log(`Error decoding authentication token: ${JSON.stringify(error)}`);
+      throw new Error(`Error decoding authentication token: ${JSON.stringify(error)}`);
     }
     return baseConfig;
   });
 }));
-
-
-
 
 graphQLServer.use('/graphiql', graphiqlExpress({
   endpointURL: '/graphql',
@@ -126,22 +123,3 @@ graphQLServer.listen(GRAPHQL_PORT, () => console.log(
   `GraphQL Server is now running on http://localhost:${GRAPHQL_PORT}/graphql`
 ));
 
-// Killing the subscription server for now.
-/*
-// WebSocket server for subscriptions
-const websocketServer = createServer((request, response) => {
-  response.writeHead(404);
-  response.end();
-});
-
-websocketServer.listen(WS_PORT, () => console.log( // eslint-disable-line no-console
-  `Websocket Server is now running on http://localhost:${WS_PORT}`
-));
-
-
-// eslint-disable-next-line
-new SubscriptionServer(
-  { subscriptionManager },
-  websocketServer
-);
-*/
