@@ -94,8 +94,8 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
           schema: executableSchema,
           context: {
             pool,
-            employee_id: employeeId,
-//            employee_id: 1316,
+//            employee_id: employeeId,
+            employee_id: 1316,
             superuser,
             loggedin: true,
             token: req.headers.authorization,

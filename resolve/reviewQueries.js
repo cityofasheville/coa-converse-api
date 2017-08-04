@@ -26,24 +26,24 @@ const review = (obj, args, context) => {
           if (isAllowed) {
             return rev;
           }
-          throw new Error('Review query not allowed');
+          throw new Error('Conversation query not allowed');
         });
       })
       .catch(err => {
-        console.log(`Error doing review query: ${err}`);
+        console.log(`Error doing conversation query: ${err}`);
       });
   }
   // Get based on the employee ID
   let employeeId = context.employee_id;
   let verifyAllowed = Promise.resolve(true);
   if (args.hasOwnProperty('employee_id')) {
-    if (arg.employeeId !== employeeId) {
+    if (args.employeeId !== employeeId) {
       employeeId = args.employee_id;
       verifyAllowed = operationIsAllowed(employeeId, context);
     }
   }
 
-  return verifyAllowed.then (isAllowed => {
+  return verifyAllowed.then(isAllowed => {
     if (isAllowed) {
       return getEmployee(employeeId, pool)
         .then(emp => {
@@ -65,7 +65,7 @@ const review = (obj, args, context) => {
             });
         });
     }
-    throw new Error('Review query not allowed');
+    throw new Error('Conversation query not allowed');
   });
 };
 
@@ -104,7 +104,7 @@ const reviews = (obj, args, context) => {
           return revs;
         });
     }
-    throw new Error('Reviews query not allowed');
+    throw new Error('Conversations query not allowed');
   });
 };
 
@@ -121,23 +121,27 @@ const questions = (obj, args, context) => {
         if (context.employee_id === rev.employee_id &&
             context.employee_id === rev.supervisor_id) {
           verifyAllowed = Promise.resolve(true)
-        }
-        else {
+        } else {
           verifyAllowed = operationIsAllowed(rev.supervisor_id, context);
         }
-        const qs = [];
-        result.recordset.forEach(r => {
-          questions.push(
-            {
-              id: r.Q_ID,
-              type: r.QT_Type,
-              question: r.QT_Question,
-              answer: r.Answer,
-              required: r.Required,
-            }
-          );
+        return verifyAllowed.then(isAllowed => {
+          if (isAllowed) {
+            const qs = [];
+            result.recordset.forEach(r => {
+              questions.push(
+                {
+                  id: r.Q_ID,
+                  type: r.QT_Type,
+                  question: r.QT_Question,
+                  answer: r.Answer,
+                  required: r.Required,
+                }
+              );
+            });
+            return qs;
+          }
+          throw new Error('Access not allowed to questions for this conversation.');
         });
-        return qs;
       }
       throw new Error(`Review ${obj.id} not found.`);
     });
@@ -152,16 +156,29 @@ const responses = (obj, args, context) => {
     .input('ReviewID', sql.Int, obj.id)
     .execute('avp_get_review')
     .then((result) => {
-      const rs = [];
-      const r = result.recordset[0];
-      rs.push(
-        {
-          review_id: obj.id,
-          question_id: null,
-          Response: r.Response,
+      const rev = result.recordset[0];
+      let verifyAllowed;
+      if (context.employee_id === rev.employee_id &&
+          context.employee_id === rev.supervisor_id) {
+        verifyAllowed = Promise.resolve(true);
+      } else {
+        verifyAllowed = operationIsAllowed(rev.supervisor_id, context);
+      }
+      return verifyAllowed.then(isAllowed => {
+        if (isAllowed) {
+          const rs = [];
+          const r = result.recordset[0];
+          rs.push(
+            {
+              review_id: obj.id,
+              question_id: null,
+              Response: r.Response,
+            }
+          );
+          return rs;
         }
-      );
-      return rs;
+        throw new Error('Access not allowed to responses for this conversation.');
+      });
     });
   }
   return obj.responses;
