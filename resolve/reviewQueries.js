@@ -26,7 +26,7 @@ const review = (obj, args, context) => {
           if (isAllowed) {
             return rev;
           }
-          throw new Error('Employee query not allowed');
+          throw new Error('Review query not allowed');
         });
       })
       .catch(err => {
@@ -35,58 +35,77 @@ const review = (obj, args, context) => {
   }
   // Get based on the employee ID
   let employeeId = context.employee_id;
+  let verifyAllowed = Promise.resolve(true);
   if (args.hasOwnProperty('employee_id')) {
-    employeeId = args.employee_id;
+    if (arg.employeeId !== employeeId) {
+      employeeId = args.employee_id;
+      verifyAllowed = operationIsAllowed(employeeId, context);
+    }
   }
-  // AUTH HERE!!!!
-  return getEmployee(employeeId, pool)
-    .then(emp => {
-      const currentReview = emp.current_review;
-      if (currentReview === null || currentReview === 0) {
-        return createCurrentReview(emp, pool);
-      }
-      return pool.request()
-        .input('ReviewID', sql.Int, currentReview)
-        .execute('avp_get_review')
-        .then((result2) => {
-          if (result2.recordset.length !== 1) {
-            throw new Error(`Unable to retrieve conversation ${currentReview}`);
+
+  return verifyAllowed.then (isAllowed => {
+    if (isAllowed) {
+      return getEmployee(employeeId, pool)
+        .then(emp => {
+          const currentReview = emp.current_review;
+          if (currentReview === null || currentReview === 0) {
+            return createCurrentReview(emp, pool);
           }
-          return loadReview(result2.recordset[0], { status: null });
-        })
-        .catch(err => {
-          throw new Error(err);
+          return pool.request()
+            .input('ReviewID', sql.Int, currentReview)
+            .execute('avp_get_review')
+            .then((result2) => {
+              if (result2.recordset.length !== 1) {
+                throw new Error(`Unable to retrieve conversation ${currentReview}`);
+              }
+              return loadReview(result2.recordset[0], { status: null });
+            })
+            .catch(err => {
+              throw new Error(err);
+            });
         });
-    });
+    }
+    throw new Error('Review query not allowed');
+  });
 };
 
 const reviews = (obj, args, context) => {
   const pool = context.pool;
   const id = obj.id;
   const revs = [];
-  return pool.request()
-    .input('UserEmpID', sql.Int, id)
-    .execute('avp_Reviews_of_Me')
-    .then(result => {
-      result.recordset.forEach(r => {
-        const rev = {
-          id: r.R_ID,
-          status: r.Status,
-          status_date: new Date(r.Status_Date).toISOString(),
-          supervisor_id: r.SupID,
-          employee_id: r.EmpID,
-          position: r.Position,
-          periodStart: new Date(r.Period_Start).toISOString(),
-          periodEnd: new Date(r.Period_End).toISOString(),
-          reviewer_name: r.Reviewer,
-          employee_name: r.Employee,
-          questions: null,
-          responses: null,
-        };
-        revs.push(rev);
-      });
-      return revs;
-    });
+  let verifyAllowed = Promise.resolve(true);
+  if (id !== context.employee_id) {
+    verifyAllowed = operationIsAllowed(id, context);
+  }
+  return verifyAllowed
+  .then(isAllowed => {
+    if (isAllowed) {
+      return pool.request()
+        .input('UserEmpID', sql.Int, id)
+        .execute('avp_Reviews_of_Me')
+        .then(result => {
+          result.recordset.forEach(r => {
+            const rev = {
+              id: r.R_ID,
+              status: r.Status,
+              status_date: new Date(r.Status_Date).toISOString(),
+              supervisor_id: r.SupID,
+              employee_id: r.EmpID,
+              position: r.Position,
+              periodStart: new Date(r.Period_Start).toISOString(),
+              periodEnd: new Date(r.Period_End).toISOString(),
+              reviewer_name: r.Reviewer,
+              employee_name: r.Employee,
+              questions: null,
+              responses: null,
+            };
+            revs.push(rev);
+          });
+          return revs;
+        });
+    }
+    throw new Error('Reviews query not allowed');
+  });
 };
 
 const questions = (obj, args, context) => {
