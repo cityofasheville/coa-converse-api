@@ -26,7 +26,6 @@ const getEmployee = (id, pool) => {
       });
     })
     .catch(err => {
-      console.log(`Error getting employee: ${err}`);
       return Promise.resolve({ error: `Error getting employee: ${err}` });
     });
 };

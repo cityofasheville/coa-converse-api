@@ -13,12 +13,15 @@ const updateReview = (root, args, context) => {
     let periodStart = review.periodStart;
     let periodEnd = review.periodEnd;
     let doSave = false;
+    if (context.employee_id !== review.employee_id ||
+        context.employee_id !== review.supervisor_id) {
+      throw new Error('Only the supervisor or employee can modify a conversation');
+    }
     if (inRev.hasOwnProperty('status')) {
       newStatus = inRev.status;
       if (review.status !== newStatus) {
         doSave = true;
         let errorString = null;
-        console.log(`The new status is ${newStatus}`);
         if (!(newStatus === 'Open' || newStatus === 'Ready' ||
               newStatus === 'Acknowledged' || newStatus === 'Closed')) {
           return Promise.resolve({ error: true, errorString: `Invalid status ${newStatus}` });
@@ -43,7 +46,7 @@ const updateReview = (root, args, context) => {
         }
         status = newStatus;
         if (errorString !== null) {
-          return Promise.resolve({ error: true, errorString });
+          throw new Error(errorString);
         }
       }
     }
@@ -77,9 +80,7 @@ const updateReview = (root, args, context) => {
     return Promise.resolve({ error: false });
   })
   .catch(revErr => {
-    console.log('ERROR!');
-    console.log(revErr);
-    return Promise.resolve({ error: true, errorString: revErr });
+    throw new Error(`Error updating conversation: ${revErr}`);
   });
   return seq.then(res1 => { // Deal with the questions
     if (!res1.error && inRev.questions !== null && inRev.questions.length > 0) {
@@ -92,10 +93,7 @@ const updateReview = (root, args, context) => {
         .query('UPDATE Questions SET Answer = @answer WHERE Q_ID = @qid')
         .then(qRes => {
           if (qRes.rowsAffected === null || qRes.rowsAffected[0] !== 1) {
-            return Promise.resolve({
-              error: true,
-              errorString: `Error updating question ${qId}`,
-            });
+            throw new Error(`Error updating question ${qId}`);
           }
           return Promise.resolve({ error: false });
         });
@@ -126,7 +124,7 @@ const updateReview = (root, args, context) => {
       return req
       .then(respRes => {
         if (respRes.rowsAffected === null || respRes.rowsAffected[0] !== 1) {
-          return Promise.resolve({ error: true, errorString: 'Error updating response' });
+          throw new Error('Error updating response');
         }
         return Promise.resolve({ error: false });
       });
@@ -150,11 +148,11 @@ const updateReview = (root, args, context) => {
         return Promise.resolve(review);
       })
       .catch(err => {
-        console.log(`Error doing review query: ${err}`);
+        throw new Error(`Error doing conversation query: ${err}`);
       });
   })
   .catch(err => {
-    console.log(`Error at end: ${err}`);
+    throw new Error(`Error at conversation update end: ${err}`);
   });
 };
 
