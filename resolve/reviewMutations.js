@@ -13,6 +13,10 @@ const updateReview = (root, args, context) => {
     let periodStart = review.periodStart;
     let periodEnd = review.periodEnd;
     let doSave = false;
+    if (context.employee_id !== review.employee_id ||
+        context.employee_id !== review.supervisor_id) {
+      throw new Error('Only the supervisor or employee can modify a conversation');
+    }
     if (inRev.hasOwnProperty('status')) {
       newStatus = inRev.status;
       if (review.status !== newStatus) {
