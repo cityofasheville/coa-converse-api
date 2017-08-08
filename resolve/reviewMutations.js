@@ -51,11 +51,14 @@ const updateReview = (root, args, context) => {
       }
     }
 
-    if (inRev.hasOwnProperty('periodStart')) {
-      // Need to validate
-      doSave = true;
-      periodStart = inRev.periodStart;
-    }
+    // 8/8/17: We no longer allow periodStart to be updated via mutation.
+    /*
+      if (inRev.hasOwnProperty('periodStart')) {
+        // Need to validate
+        doSave = true;
+        periodStart = inRev.periodStart;
+      }
+    */
     if (inRev.hasOwnProperty('periodEnd')) {
       // Need to validate
       doSave = true;
