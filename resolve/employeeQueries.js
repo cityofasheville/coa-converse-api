@@ -32,6 +32,7 @@ const employees = (obj, args, context) => {
       .execute('avp_Get_My_Employees')
       .then(result => {
         result.recordset.forEach(e => {
+          const lastRev = (e.LastReviewed === null) ? null : new Date(e.LastReviewed).toISOString();
           const emp = {
             id: e.EmpID,
             active: e.Active,
@@ -40,7 +41,7 @@ const employees = (obj, args, context) => {
             position: e.Position,
             department: e.Department,
             division: e.Division,
-            last_reviewed: new Date(e.LastReviewed).toISOString(),
+            last_reviewed: lastRev,
             review_by: new Date(e.ReviewBy).toISOString(),
             reviewable: e.Active && e.Position !== null && e.Position !== '',
             supervisor_id: e.SupID,
