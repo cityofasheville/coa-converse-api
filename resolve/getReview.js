@@ -13,6 +13,8 @@ const getReview = (id, context) => {
       periodStart: new Date(r.Period_Start).toISOString(),
       periodEnd: new Date(r.Period_End).toISOString(),
       reviewer_name: r.Reviewer,
+      employee_id: r.EmpID,
+      supervisor_id: r.SupID,
     };
     return Promise.resolve(review);
   })

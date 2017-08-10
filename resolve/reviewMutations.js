@@ -10,10 +10,12 @@ const updateReview = (root, args, context) => {
   seq = getReview(rId, context)
   .then(review => {
     let status = review.status;
-    let periodStart = review.periodStart;
+//    let periodStart = review.periodStart;
     let periodEnd = review.periodEnd;
     let doSave = false;
-    if (context.employee_id !== review.employee_id ||
+    console.log(typeof context.employee_id);
+    console.log(typeof review.supervisor_id);
+    if (context.employee_id !== review.employee_id &&
         context.employee_id !== review.supervisor_id) {
       throw new Error('Only the supervisor or employee can modify a conversation');
     }
@@ -30,13 +32,22 @@ const updateReview = (root, args, context) => {
           if (newStatus !== 'Ready') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
+          if (context.employee_id !== review.supervisor_id) {
+            errorString = 'Only supervisor may modify conversation in Open status';
+          }
         } else if (status === 'Ready') {
           if (newStatus !== 'Open' && newStatus !== 'Acknowledged') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
+          if (context.employee_id !== review.employee_id) {
+            errorString = 'Only employee may modify conversation in Ready status';
+          }
         } else if (status === 'Acknowledged') {
           if (newStatus !== 'Open' && newStatus !== 'Closed') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
+          }
+          if (context.employee_id !== review.supervisor_id) {
+            errorString = 'Only supervisor may modify conversation in Acknowledged status';
           }
         } else if (status === 'Closed') {
           errorString = 'Status transition from Closed status is not allowed';
@@ -71,7 +82,7 @@ const updateReview = (root, args, context) => {
     return context.pool.request()
       .input('rid', sql.Int, rId)
       .input('status', sql.NVarChar, status)
-      .input('start', sql.Date, periodStart)
+      .input('start', sql.Date, inRev.periodStart)
       .input('end', sql.Date, periodEnd)
       .query(updQuery);
   })
