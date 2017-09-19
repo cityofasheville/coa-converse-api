@@ -13,8 +13,7 @@ const updateReview = (root, args, context) => {
 //    let periodStart = review.periodStart;
     let periodEnd = review.periodEnd;
     let doSave = false;
-    console.log(typeof context.employee_id);
-    console.log(typeof review.supervisor_id);
+
     if (context.employee_id !== review.employee_id &&
         context.employee_id !== review.supervisor_id) {
       throw new Error('Only the supervisor or employee can modify a conversation');
