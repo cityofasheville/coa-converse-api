@@ -121,12 +121,12 @@ const updateReview = (root, args, context) => {
       const updateResponses = inRev.responses.map(r => {
         if (r.question_id === null) {
           return context.pool.request()
-          .input('response', sql.NVarChar, inRev.responses[0].Response)
+          .input('response', sql.NVarChar, r.Response)
           .input('rid', sql.Int, rId)
           .query('UPDATE Responses SET Response = @response WHERE R_ID = @rid');
         }
         return context.pool.request()
-        .input('response', sql.NVarChar, inRev.responses[0].Response)
+        .input('response', sql.NVarChar, r.Response)
         .input('rid', sql.Int, rId)
         .input('qid', sql.Int, r.question_id)
         .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
