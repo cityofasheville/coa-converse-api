@@ -7,6 +7,7 @@ const operationIsAllowed = require('./operationIsAllowed');
 const review = (obj, args, context) => {
   const pool = context.pool;
   const id = args.id;
+  console.log(`Getting review ${id}`);
   if (args.hasOwnProperty('id') && id !== -1) {
     return pool.request()
       .input('ReviewID', sql.Int, id)
@@ -15,6 +16,7 @@ const review = (obj, args, context) => {
         let rev = {
           status: null,
         };
+        // console.log(`Here is the review: ${JSON.stringify(result.recordset)}`);
         result.recordset.forEach(r => {
           rev = loadReview(r, rev);
         });

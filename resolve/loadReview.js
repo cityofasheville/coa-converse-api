@@ -1,5 +1,8 @@
+const MULTIRESPONSE = true;
+
 const loadReview = (r, review) => {
   let nreview;
+  console.log(`Deal with r = ${JSON.stringify(r)}`);
   if (review.status === null) {
     nreview = {
       id: r.R_ID,
@@ -13,16 +16,15 @@ const loadReview = (r, review) => {
       reviewer_name: r.Reviewer,
       employee_name: r.Employee,
       questions: [],
-      responses: [
-        {
-          question_id: null,
-          Response: r.Response,
-        },
-      ],
+      responses: [],
     };
+    if (!MULTIRESPONSE) {
+      nreview.responses = [{ question_id: null, Response: r.Response }];
+    }
   } else {
     nreview = Object.assign({}, review);
   }
+  console.log('Push question');
   nreview.questions.push(
     {
       id: r.Q_ID,
@@ -32,6 +34,13 @@ const loadReview = (r, review) => {
       required: r.Required,
     }
   );
+  if (MULTIRESPONSE) {
+    console.log('Push response');
+    nreview.responses.push({
+      question_id: r.Q_ID,
+      Response: r.Response,
+    });
+  }
   return nreview;
 };
 

@@ -118,30 +118,44 @@ const updateReview = (root, args, context) => {
   })
   .then(res2 => { // Deal with response
     if (!res2.error && inRev.responses !== null && inRev.responses.length > 0) {
-      let req = context.pool.request();
-      let qId = null;
-      if (inRev.responses[0].hasOwnProperty('question_id')) {
-        qId = inRev.responses[0].question_id;
-      }
-      if (qId === null) {
-        req = req
-        .input('response', sql.NVarChar, inRev.responses[0].Response)
-        .input('rid', sql.Int, rId)
-        .query('UPDATE Responses SET Response = @response WHERE R_ID = @rid');
-      } else {
-        req = req
-        .input('response', sql.NVarChar, inRev.responses[0].Response)
-        .input('rid', sql.Int, rId)
-        .input('qid', sql.Int, qId)
-        .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
-      }
-      return req
-      .then(respRes => {
-        if (respRes.rowsAffected === null || respRes.rowsAffected[0] !== 1) {
-          throw new Error('Error updating response');
+      const updateResponses = inRev.responses.map(r => {
+        if (r.question_id === null) {
+          return context.pool.request()
+          .input('response', sql.NVarChar, inRev.responses[0].Response)
+          .input('rid', sql.Int, rId)
+          .query('UPDATE Responses SET Response = @response WHERE R_ID = @rid');
         }
-        return Promise.resolve({ error: false });
+        return context.pool.request()
+        .input('response', sql.NVarChar, inRev.responses[0].Response)
+        .input('rid', sql.Int, rId)
+        .input('qid', sql.Int, r.question_id)
+        .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
       });
+      return Promise.all(updateResponses);
+      // let req = context.pool.request();
+      // let qId = null;
+      // if (inRev.responses[0].hasOwnProperty('question_id')) {
+      //   qId = inRev.responses[0].question_id;
+      // }
+      // if (qId === null) {
+      //   req = req
+      //   .input('response', sql.NVarChar, inRev.responses[0].Response)
+      //   .input('rid', sql.Int, rId)
+      //   .query('UPDATE Responses SET Response = @response WHERE R_ID = @rid');
+      // } else {
+      //   req = req
+      //   .input('response', sql.NVarChar, inRev.responses[0].Response)
+      //   .input('rid', sql.Int, rId)
+      //   .input('qid', sql.Int, qId)
+      //   .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
+      // }
+      // return req
+      // .then(respRes => {
+      //   if (respRes.rowsAffected === null || respRes.rowsAffected[0] !== 1) {
+      //     throw new Error('Error updating response');
+      //   }
+      //   return Promise.resolve({ error: false });
+      // });
     }
     return Promise.resolve(res2);
   })
