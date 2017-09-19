@@ -1,8 +1,6 @@
-const MULTIRESPONSE = true;
-
+const MULTIRESPONSE = require('../constants').MULTIRESPONSE;
 const loadReview = (r, review) => {
   let nreview;
-  console.log(`Deal with r = ${JSON.stringify(r)}`);
   if (review.status === null) {
     nreview = {
       id: r.R_ID,
@@ -24,7 +22,6 @@ const loadReview = (r, review) => {
   } else {
     nreview = Object.assign({}, review);
   }
-  console.log('Push question');
   nreview.questions.push(
     {
       id: r.Q_ID,
@@ -35,7 +32,6 @@ const loadReview = (r, review) => {
     }
   );
   if (MULTIRESPONSE) {
-    console.log('Push response');
     nreview.responses.push({
       question_id: r.Q_ID,
       Response: r.Response,
