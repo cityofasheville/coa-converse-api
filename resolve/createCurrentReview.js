@@ -11,7 +11,7 @@ const createCurrentReview = (emp, pool) => {
   return pool.request()
   .input('EmpID', sql.Int, emp.id)
   .input('SupID', sql.Int, emp.supervisor_id)
-  .input('RT_ID', sql.Int, 2)
+  .input('RT_ID', sql.Int, 3) // Last parameter is Review ID to pick questions
 //  .input('PeriodStart', sql.Date, t1s)
   .input('PeriodStart', sql.Date, emp.last_reviewed)
   .input('PeriodEnd', sql.Date, t2s)
