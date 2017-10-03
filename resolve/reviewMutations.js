@@ -7,6 +7,7 @@ const updateReview = (root, args, context) => {
   const inRev = args.review;
   let seq = Promise.resolve({ error: false });
   let newStatus = null;
+  let transition = null;
   seq = getReview(rId, context)
   .then(review => {
     let status = review.status;
@@ -54,6 +55,18 @@ const updateReview = (root, args, context) => {
         if (errorString !== null) {
           return Promise.resolve({ error: true, errorString });
         }
+
+        if (status === 'Open') {
+          transition = 'Ready';
+        } else if (status === 'Ready') {
+          if (newStatus === 'Open') transition = 'Reopen';
+          else transition = 'Acknowledged';
+        } else if (status === 'Acknowledged') {
+          if (newStatus === 'Closed') transition = 'Closed';
+          else transition = 'Reacknowledge';
+        }
+        console.log(`review is ${JSON.stringify(review)}`);
+
         status = newStatus;
         if (errorString !== null) {
           throw new Error(errorString);
@@ -131,30 +144,6 @@ const updateReview = (root, args, context) => {
         .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
       });
       return Promise.all(updateResponses);
-      // let req = context.pool.request();
-      // let qId = null;
-      // if (inRev.responses[0].hasOwnProperty('question_id')) {
-      //   qId = inRev.responses[0].question_id;
-      // }
-      // if (qId === null) {
-      //   req = req
-      //   .input('response', sql.NVarChar, inRev.responses[0].Response)
-      //   .input('rid', sql.Int, rId)
-      //   .query('UPDATE Responses SET Response = @response WHERE R_ID = @rid');
-      // } else {
-      //   req = req
-      //   .input('response', sql.NVarChar, inRev.responses[0].Response)
-      //   .input('rid', sql.Int, rId)
-      //   .input('qid', sql.Int, qId)
-      //   .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
-      // }
-      // return req
-      // .then(respRes => {
-      //   if (respRes.rowsAffected === null || respRes.rowsAffected[0] !== 1) {
-      //     throw new Error('Error updating response');
-      //   }
-      //   return Promise.resolve({ error: false });
-      // });
     }
     return Promise.resolve(res2);
   })
@@ -177,6 +166,66 @@ const updateReview = (root, args, context) => {
       .catch(err => {
         throw new Error(`Error doing conversation query: ${err}`);
       });
+  })
+  .then(res4 => {
+    if (transition === null || res4.error) {
+      return Promise.resolve(res4);
+    }
+    // We have a status transition - trigger a notification.
+    const employeeEmail = res4.employee_email;
+    const supervisorEmail = res4.supervisor_email;
+    let subject;
+    let body;
+    let toAddress;
+    console.log(`The transition is ${transition}`);
+    console.log(`Possible addresses: ${employeeEmail}, ${supervisorEmail}`);
+    switch (transition) {
+      case 'Ready':
+        console.log('Yes I am really ready');
+        subject = 'Your latest check-in is ready for your acknowledgment';
+        body = 'Your latest check-in is ready for your acknowledgment';
+        toAddress = employeeEmail;
+        break;
+      case 'Reopen':
+        subject = 'You have a check-in that has been re-opened';
+        body = 'You have a check-in that has been re-opened';
+        toAddress = supervisorEmail;
+        break;
+      case 'Acknowledged':
+        subject = 'You have a check-in that has been acknowledged';
+        body = 'You have a check-in that has been acknowledged';
+        toAddress = supervisorEmail;
+        break;
+      case 'Closed':
+        subject = 'Your supervisor has closed your latest check-in';
+        body = 'Your supervisor has closed your latest check-in';
+        toAddress = employeeEmail;
+        break;
+      case 'Reacknowledge':
+        subject = 'Your supervisor has requested that you re-review your latest check-in';
+        body = 'Your supervisor has requested that you re-review your latest check-in';
+        toAddress = employeeEmail;
+        break;
+      default:
+        console.log(`No idea, but I am in default with ${transition}`);
+        break;
+    }
+    console.log('Updating notifications');
+    console.log(`To: ${toAddress}`);
+    const notify = context.pool.request()
+    .input('ToAddress', sql.NVarChar, toAddress)
+    .input('Subject', sql.NVarChar, subject)
+    .input('Body', sql.NVarChar, body)
+    .query('INSERT INTO Notifications '
+      + '(ToAddress, FromAddress, Subject, BodyFormat, Body) '
+      + "VALUES (@ToAddress, 'ejackson@ashevillenc.gov', @Subject,'t',@Body)");
+
+    return notify.then(res5 => {
+      if (res5.error) {
+        return Promise.resolve(res5);
+      }
+      return Promise.resolve(res4);
+    });
   })
   .catch(err => {
     throw new Error(`Error at conversation update end: ${err}`);
