@@ -8,16 +8,16 @@ const updateReview = (root, args, context) => {
   let seq = Promise.resolve({ error: false });
   let newStatus = null;
   let transition = null;
-  seq = getReview(rId, context)
+  seq = getReview(rId, context) // Load information from Reviews table
   .then(review => {
+    // Verify we have a valid user and status transition
     let status = review.status;
-//    let periodStart = review.periodStart;
     let periodEnd = review.periodEnd;
     let doSave = false;
 
     if (context.employee_id !== review.employee_id &&
         context.employee_id !== review.supervisor_id) {
-      throw new Error('Only the supervisor or employee can modify a conversation');
+      throw new Error('Only the supervisor or employee can modify a check-in');
     }
     if (inRev.hasOwnProperty('status')) {
       newStatus = inRev.status;
@@ -33,21 +33,21 @@ const updateReview = (root, args, context) => {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
           if (context.employee_id !== review.supervisor_id) {
-            errorString = 'Only supervisor may modify conversation in Open status';
+            errorString = 'Only supervisor may modify check-in in Open status';
           }
         } else if (status === 'Ready') {
           if (newStatus !== 'Open' && newStatus !== 'Acknowledged') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
           if (context.employee_id !== review.employee_id) {
-            errorString = 'Only employee may modify conversation in Ready status';
+            errorString = 'Only employee may modify check-in in Ready status';
           }
         } else if (status === 'Acknowledged') {
           if (newStatus !== 'Open' && newStatus !== 'Closed') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
           if (context.employee_id !== review.supervisor_id) {
-            errorString = 'Only supervisor may modify conversation in Acknowledged status';
+            errorString = 'Only supervisor may modify check-in in Acknowledged status';
           }
         } else if (status === 'Closed') {
           errorString = 'Status transition from Closed status is not allowed';
@@ -65,7 +65,6 @@ const updateReview = (root, args, context) => {
           if (newStatus === 'Closed') transition = 'Closed';
           else transition = 'Reacknowledge';
         }
-        console.log(`review is ${JSON.stringify(review)}`);
 
         status = newStatus;
         if (errorString !== null) {
@@ -74,14 +73,7 @@ const updateReview = (root, args, context) => {
       }
     }
 
-    // 8/8/17: We no longer allow periodStart to be updated via mutation.
-    /*
-      if (inRev.hasOwnProperty('periodStart')) {
-        // Need to validate
-        doSave = true;
-        periodStart = inRev.periodStart;
-      }
-    */
+    // Update values in Reviews table
     if (inRev.hasOwnProperty('periodEnd')) {
       // Need to validate
       doSave = true;
@@ -106,9 +98,11 @@ const updateReview = (root, args, context) => {
     return Promise.resolve({ error: false });
   })
   .catch(revErr => {
-    throw new Error(`Error updating conversation: ${revErr}`);
+    throw new Error(`Error updating check-in: ${revErr}`);
   });
-  return seq.then(res1 => { // Deal with the questions
+
+  // Done with Review table, deal with the questions, responses, notifications.
+  return seq.then(res1 => {
     if (!res1.error && inRev.questions !== null && inRev.questions.length > 0) {
       const updateQuestions = inRev.questions.map(q => {
         const qId = q.id;
@@ -147,7 +141,8 @@ const updateReview = (root, args, context) => {
     }
     return Promise.resolve(res2);
   })
-  .then(res3 => { // All done - either error or return the updated review
+  .then(res3 => {
+    // All done - either error or return the updated review
     if (res3.error) {
       return Promise.resolve(res3);
     }
@@ -164,7 +159,7 @@ const updateReview = (root, args, context) => {
         return Promise.resolve(review);
       })
       .catch(err => {
-        throw new Error(`Error doing conversation query: ${err}`);
+        throw new Error(`Error doing check-in query: ${err}`);
       });
   })
   .then(res4 => {
@@ -177,11 +172,9 @@ const updateReview = (root, args, context) => {
     let subject;
     let body;
     let toAddress;
-    console.log(`The transition is ${transition}`);
-    console.log(`Possible addresses: ${employeeEmail}, ${supervisorEmail}`);
+
     switch (transition) {
       case 'Ready':
-        console.log('Yes I am really ready');
         subject = 'Your latest check-in is ready for your acknowledgment';
         body = 'Your latest check-in is ready for your acknowledgment';
         toAddress = employeeEmail;
@@ -210,8 +203,7 @@ const updateReview = (root, args, context) => {
         console.log(`No idea, but I am in default with ${transition}`);
         break;
     }
-    console.log('Updating notifications');
-    console.log(`To: ${toAddress}`);
+
     const notify = context.pool.request()
     .input('ToAddress', sql.NVarChar, toAddress)
     .input('Subject', sql.NVarChar, subject)
@@ -228,7 +220,7 @@ const updateReview = (root, args, context) => {
     });
   })
   .catch(err => {
-    throw new Error(`Error at conversation update end: ${err}`);
+    throw new Error(`Error at check-in update end: ${err}`);
   });
 };
 
