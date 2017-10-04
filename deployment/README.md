@@ -14,12 +14,12 @@ To update from Github and redeploy, run:
 
 ````
   git pull
-  sudo systemctl restart simplicitygql1
-  sudo systemctl restart simplicitygql2
+  sudo systemctl restart converse1
+  sudo systemctl restart converse2
 ````
 
-To see the status of the node services, run, e.g., ````sudo systemctl status simplicitygql1```` 
-or ````sudo journalctl -u simplicitygql1````.
+To see the status of the node services, run, e.g., ````sudo systemctl status converse1```` 
+or ````sudo journalctl -u converse1````.
 
 Node console logging goes to /var/log/messages
 
