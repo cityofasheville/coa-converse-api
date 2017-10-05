@@ -63,7 +63,7 @@ const baseConfig = {
     subscriptions: null,
   },
 };
-
+console.log('graphql server');
 graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   if (!req.headers.authorization || req.headers.authorization === 'null') {
     console.log('NOT LOGGED IN');
@@ -115,10 +115,13 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     return baseConfig;
   });
 }));
+console.log('graphiql server');
 
 graphQLServer.use('/graphiql', graphiqlExpress({
   endpointURL: '/graphql',
 }));
+
+console.log('listen');
 
 graphQLServer.listen(GRAPHQL_PORT, () => console.log(
   `GraphQL Server is now running on http://localhost:${GRAPHQL_PORT}/graphql`

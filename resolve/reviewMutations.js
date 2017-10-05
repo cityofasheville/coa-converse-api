@@ -172,45 +172,51 @@ const updateReview = (root, args, context) => {
     let subject;
     let body;
     let toAddress;
+    let fromAddress;
 
     switch (transition) {
       case 'Ready':
         subject = 'Your latest check-in is ready for your acknowledgment';
         body = 'Your latest check-in is ready for your acknowledgment';
         toAddress = employeeEmail;
+        fromAddress = supervisorEmail;
         break;
       case 'Reopen':
         subject = 'You have a check-in that has been re-opened';
         body = 'You have a check-in that has been re-opened';
         toAddress = supervisorEmail;
+        fromAddress = employeeEmail;
         break;
       case 'Acknowledged':
         subject = 'You have a check-in that has been acknowledged';
         body = 'You have a check-in that has been acknowledged';
         toAddress = supervisorEmail;
+        fromAddress = employeeEmail;
         break;
       case 'Closed':
         subject = 'Your supervisor has closed your latest check-in';
         body = 'Your supervisor has closed your latest check-in';
         toAddress = employeeEmail;
+        fromAddress = supervisorEmail;
         break;
       case 'Reacknowledge':
         subject = 'Your supervisor has requested that you re-review your latest check-in';
         body = 'Your supervisor has requested that you re-review your latest check-in';
         toAddress = employeeEmail;
+        fromAddress = supervisorEmail;
         break;
       default:
-        console.log(`No idea, but I am in default with ${transition}`);
-        break;
+        throw new Error(`Unknown status transition ${transition} for notification.`);
     }
 
     const notify = context.pool.request()
     .input('ToAddress', sql.NVarChar, toAddress)
+    .input('FromAddress', sql.NVarChar, fromAddress)
     .input('Subject', sql.NVarChar, subject)
     .input('Body', sql.NVarChar, body)
     .query('INSERT INTO Notifications '
       + '(ToAddress, FromAddress, Subject, BodyFormat, Body) '
-      + "VALUES (@ToAddress, 'ejackson@ashevillenc.gov', @Subject,'t',@Body)");
+      + "VALUES (@ToAddress, @FromAddress, @Subject,'TEXT',@Body)");
 
     return notify.then(res5 => {
       if (res5.error) {
