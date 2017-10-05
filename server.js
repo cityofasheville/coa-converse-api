@@ -17,8 +17,8 @@ const executableSchema = makeExecutableSchema({
 // beta version of webpack 2).
 const firebase = require('firebase');
 firebase.initializeApp({
-  serviceAccount: './SimpliCityII-284f9d0ebb83.json',
-  databaseURL: 'https://simplicityii-878be.firebaseio.com',
+  serviceAccount: './coa-converse-firebase-adminsdk-sd9yz-05a18e6d38.json',
+  databaseURL: 'https://coa-converse.firebaseio.com',
 });
 
 const sql = require('mssql');
