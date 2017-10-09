@@ -8,6 +8,8 @@ const updateReview = (root, args, context) => {
   let seq = Promise.resolve({ error: false });
   let newStatus = null;
   let transition = null;
+  let toId = null; // We'll need for looking up email address.
+  let toEmail = null;
   seq = getReview(rId, context) // Load information from Reviews table
   .then(review => {
     // Verify we have a valid user and status transition
@@ -58,12 +60,15 @@ const updateReview = (root, args, context) => {
 
         if (status === 'Open') {
           transition = 'Ready';
+          toId = review.employee_id;
         } else if (status === 'Ready') {
           if (newStatus === 'Open') transition = 'Reopen';
           else transition = 'Acknowledged';
+          toId = review.supervisor_id;
         } else if (status === 'Acknowledged') {
           if (newStatus === 'Closed') transition = 'Closed';
           else transition = 'Reacknowledge';
+          toId = review.employee_id;
         }
 
         status = newStatus;
@@ -96,6 +101,19 @@ const updateReview = (root, args, context) => {
       return Promise.resolve({ error: true, errorString: 'Error updating period' });
     }
     return Promise.resolve({ error: false });
+  })
+  .then(revRes2 => {
+    if (transition === null) return Promise.resolve(revRes2);
+    const query = `select Email from UserMap where EmpID = ${toId}`;
+    return context.pool.request()
+    .query(query)
+    .then(email => {
+      if (email.recordset.length > 0) {
+        toEmail = email.recordset[0].Email;
+        return Promise.resolve(revRes2);
+      }
+      throw new Error('Unable to find email by ID.');
+    });
   })
   .catch(revErr => {
     throw new Error(`Error updating check-in: ${revErr}`);
@@ -178,37 +196,38 @@ const updateReview = (root, args, context) => {
       case 'Ready':
         subject = 'Your latest check-in is ready for your acknowledgment';
         body = 'Your latest check-in is ready for your acknowledgment';
-        toAddress = employeeEmail;
-        fromAddress = supervisorEmail;
+        toAddress = toEmail;
+        fromAddress = context.email;
         break;
       case 'Reopen':
         subject = 'You have a check-in that has been re-opened';
         body = 'You have a check-in that has been re-opened';
-        toAddress = supervisorEmail;
-        fromAddress = employeeEmail;
+        toAddress = toEmail;
+        fromAddress = context.email;
         break;
       case 'Acknowledged':
         subject = 'You have a check-in that has been acknowledged';
         body = 'You have a check-in that has been acknowledged';
-        toAddress = supervisorEmail;
-        fromAddress = employeeEmail;
+        toAddress = toEmail;
+        fromAddress = context.email;
         break;
       case 'Closed':
         subject = 'Your supervisor has closed your latest check-in';
         body = 'Your supervisor has closed your latest check-in';
-        toAddress = employeeEmail;
-        fromAddress = supervisorEmail;
+        toAddress = toEmail;
+        fromAddress = context.email;
         break;
       case 'Reacknowledge':
         subject = 'Your supervisor has requested that you re-review your latest check-in';
         body = 'Your supervisor has requested that you re-review your latest check-in';
-        toAddress = employeeEmail;
-        fromAddress = supervisorEmail;
+        toAddress = toEmail;
+        fromAddress = context.email;
         break;
       default:
         throw new Error(`Unknown status transition ${transition} for notification.`);
     }
 
+    console.log(`From: ${fromAddress}, To: ${toAddress}`);
     const notify = context.pool.request()
     .input('ToAddress', sql.NVarChar, toAddress)
     .input('FromAddress', sql.NVarChar, fromAddress)

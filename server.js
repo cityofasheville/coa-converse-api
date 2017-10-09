@@ -52,7 +52,7 @@ const baseConfig = {
   schema: executableSchema,
   context: {
     pool,
-    employee_id: '1316',
+    employee_id: 0,
     superuser: false,
     loggedin: false,
     token: null,
