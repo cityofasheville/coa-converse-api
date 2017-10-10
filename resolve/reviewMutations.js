@@ -16,7 +16,6 @@ const updateReview = (root, args, context) => {
     let status = review.status;
     let periodEnd = review.periodEnd;
     let doSave = false;
-
     if (context.employee_id !== review.employee_id &&
         context.employee_id !== review.supervisor_id) {
       throw new Error('Only the supervisor or employee can modify a check-in');
@@ -67,7 +66,7 @@ const updateReview = (root, args, context) => {
           toId = review.supervisor_id;
         } else if (status === 'Acknowledged') {
           if (newStatus === 'Closed') transition = 'Closed';
-          else transition = 'Reacknowledge';
+          else transition = 'ReopenBySup';
           toId = review.employee_id;
         }
 
@@ -185,8 +184,6 @@ const updateReview = (root, args, context) => {
       return Promise.resolve(res4);
     }
     // We have a status transition - trigger a notification.
-    const employeeEmail = res4.employee_email;
-    const supervisorEmail = res4.supervisor_email;
     let subject;
     let body;
     let toAddress;
@@ -217,9 +214,9 @@ const updateReview = (root, args, context) => {
         toAddress = toEmail;
         fromAddress = context.email;
         break;
-      case 'Reacknowledge':
-        subject = 'Your supervisor has requested that you re-review your latest check-in';
-        body = 'Your supervisor has requested that you re-review your latest check-in';
+      case 'ReopenBySup':
+        subject = 'Your supervisor has reopened your check-in';
+        body = 'Your supervisor has reopened your check-in. You will receive another notification when it is ready for acknowledgment.';
         toAddress = toEmail;
         fromAddress = context.email;
         break;
