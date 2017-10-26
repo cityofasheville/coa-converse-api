@@ -17,8 +17,8 @@ const executableSchema = makeExecutableSchema({
 // beta version of webpack 2).
 const firebase = require('firebase');
 firebase.initializeApp({
-  serviceAccount: './SimpliCityII-284f9d0ebb83.json',
-  databaseURL: 'https://simplicityii-878be.firebaseio.com',
+  serviceAccount: './coa-converse-firebase-adminsdk-sd9yz-05a18e6d38.json',
+  databaseURL: 'https://coa-converse.firebaseio.com',
 });
 
 const sql = require('mssql');
@@ -46,7 +46,7 @@ pool.connect(err => {
 });
 
 const GRAPHQL_PORT = process.env.PORT || 8080;
-console.log(`The graphql port is ${GRAPHQL_PORT}`);
+console.log(`Check-Ins: the graphql port is ${GRAPHQL_PORT}`);
 const graphQLServer = express().use('*', cors());
 const baseConfig = {
   schema: executableSchema,
@@ -109,8 +109,8 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   })
   .catch((error) => {
     if (req.headers.authorization !== 'null') {
-      console.log(`Error decoding authentication token: ${JSON.stringify(error)}`);
-      throw new Error(`Error decoding authentication token: ${JSON.stringify(error)}`);
+      console.log(`Error decoding authentication token: ${error}`);
+      // throw new Error(`Error decoding authentication token: ${JSON.stringify(error)}`);
     }
     return baseConfig;
   });
@@ -121,6 +121,6 @@ graphQLServer.use('/graphiql', graphiqlExpress({
 }));
 
 graphQLServer.listen(GRAPHQL_PORT, () => console.log(
-  `GraphQL Server is now running on http://localhost:${GRAPHQL_PORT}/graphql`
+  `Check-Ins: GraphQL Server is now running on http://localhost:${GRAPHQL_PORT}/graphql`
 ));
 

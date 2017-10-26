@@ -16,7 +16,7 @@ const updateReview = (root, args, context) => {
 
     if (context.employee_id !== review.employee_id &&
         context.employee_id !== review.supervisor_id) {
-      throw new Error('Only the supervisor or employee can modify a conversation');
+      throw new Error('Only the supervisor or employee can modify a check-in');
     }
     if (inRev.hasOwnProperty('status')) {
       newStatus = inRev.status;
@@ -32,21 +32,21 @@ const updateReview = (root, args, context) => {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
           if (context.employee_id !== review.supervisor_id) {
-            errorString = 'Only supervisor may modify conversation in Open status';
+            errorString = 'Only supervisor may modify check-in in Open status';
           }
         } else if (status === 'Ready') {
           if (newStatus !== 'Open' && newStatus !== 'Acknowledged') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
           if (context.employee_id !== review.employee_id) {
-            errorString = 'Only employee may modify conversation in Ready status';
+            errorString = 'Only employee may modify check-in in Ready status';
           }
         } else if (status === 'Acknowledged') {
           if (newStatus !== 'Open' && newStatus !== 'Closed') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
           if (context.employee_id !== review.supervisor_id) {
-            errorString = 'Only supervisor may modify conversation in Acknowledged status';
+            errorString = 'Only supervisor may modify check-in in Acknowledged status';
           }
         } else if (status === 'Closed') {
           errorString = 'Status transition from Closed status is not allowed';
@@ -93,7 +93,7 @@ const updateReview = (root, args, context) => {
     return Promise.resolve({ error: false });
   })
   .catch(revErr => {
-    throw new Error(`Error updating conversation: ${revErr}`);
+    throw new Error(`Error updating check-in: ${revErr}`);
   });
   return seq.then(res1 => { // Deal with the questions
     if (!res1.error && inRev.questions !== null && inRev.questions.length > 0) {
@@ -175,11 +175,11 @@ const updateReview = (root, args, context) => {
         return Promise.resolve(review);
       })
       .catch(err => {
-        throw new Error(`Error doing conversation query: ${err}`);
+        throw new Error(`Error doing check-in query: ${err}`);
       });
   })
   .catch(err => {
-    throw new Error(`Error at conversation update end: ${err}`);
+    throw new Error(`Error at check-in update end: ${err}`);
   });
 };
 
