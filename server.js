@@ -69,8 +69,10 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     console.log('NOT LOGGED IN');
     return baseConfig;
   }
+  console.log('Calling verifyIdToken');
   return firebase.auth().verifyIdToken(req.headers.authorization)
   .then(decodedToken => {
+    console.log(`Got the email ${decodedToken.email}`);
     // Now we need to look up the employee ID
     const query = 'select EmpID from UserMap where Email = ' +
                   `'${decodedToken.email}' COLLATE SQL_Latin1_General_CP1_CI_AS`;
@@ -83,6 +85,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
       throw new Error('Unable to find employee by email.');
     })
     .then(employeeId => {
+      console.log(`Got the employee ID ${employeeId}`);
       return pool.request()
       .query(`SELECT TOP(1) * FROM dbo.SuperUsers WHERE EmpID = ${employeeId}`)
       .then(res2 => {
@@ -90,6 +93,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
         if (res2.recordset.length === 1) {
           superuser = res2.recordset[0].IsSuperUser !== 0;
         }
+        console.log('Logged in successfully');
         return {
           schema: executableSchema,
           context: {
@@ -108,9 +112,10 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     });
   })
   .catch((error) => {
+    console.log(`Why am I here? The auth header is ${req.headers.authorization}`);
     if (req.headers.authorization !== 'null') {
-      console.log(`Error decoding authentication token: ${JSON.stringify(error)}`);
-      throw new Error(`Error decoding authentication token: ${JSON.stringify(error)}`);
+      console.log(`Error decoding authentication token: ${error}`);
+      // throw new Error(`Error decoding authentication token: ${JSON.stringify(error)}`);
     }
     return baseConfig;
   });
