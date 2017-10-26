@@ -16,7 +16,6 @@ const review = (obj, args, context) => {
         let rev = {
           status: null,
         };
-        // console.log(`Here is the review: ${JSON.stringify(result.recordset)}`);
         result.recordset.forEach(r => {
           rev = loadReview(r, rev);
         });
@@ -57,7 +56,7 @@ const review = (obj, args, context) => {
             .input('ReviewID', sql.Int, currentReview)
             .execute('avp_get_review')
             .then((result2) => {
-              if (result2.recordset.length !== 1) {
+              if (result2.recordset.length < 1) {
                 throw new Error(`Unable to retrieve check-in ${currentReview}`);
               }
               return loadReview(result2.recordset[0], { status: null });
@@ -122,7 +121,7 @@ const questions = (obj, args, context) => {
         const rev = result.recordset[0];
         if (context.employee_id === rev.employee_id &&
             context.employee_id === rev.supervisor_id) {
-          verifyAllowed = Promise.resolve(true)
+          verifyAllowed = Promise.resolve(true);
         } else {
           verifyAllowed = operationIsAllowed(rev.supervisor_id, context);
         }
@@ -145,7 +144,7 @@ const questions = (obj, args, context) => {
           throw new Error('Access not allowed to questions for this check-in.');
         });
       }
-      throw new Error(`Review ${obj.id} not found.`);
+      throw new Error(`Check-in ${obj.id} not found.`);
     });
   }
   return obj.questions;
