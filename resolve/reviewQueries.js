@@ -56,7 +56,6 @@ const review = (obj, args, context) => {
             .input('ReviewID', sql.Int, currentReview)
             .execute('avp_get_review')
             .then((result2) => {
-              console.log(`Result: ${JSON.stringify(result2.recordset)}`);
               if (result2.recordset.length < 1) {
                 throw new Error(`Unable to retrieve check-in ${currentReview}`);
               }
