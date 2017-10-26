@@ -7,7 +7,7 @@ const operationIsAllowed = require('./operationIsAllowed');
 const review = (obj, args, context) => {
   const pool = context.pool;
   const id = args.id;
-  console.log(`Getting review ${id}`);
+  console.log(`Getting employee check-in ${id}`);
   if (args.hasOwnProperty('id') && id !== -1) {
     return pool.request()
       .input('ReviewID', sql.Int, id)
