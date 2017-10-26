@@ -16,7 +16,6 @@ const review = (obj, args, context) => {
         let rev = {
           status: null,
         };
-        // console.log(`Here is the review: ${JSON.stringify(result.recordset)}`);
         result.recordset.forEach(r => {
           rev = loadReview(r, rev);
         });
@@ -28,11 +27,11 @@ const review = (obj, args, context) => {
           if (isAllowed) {
             return rev;
           }
-          throw new Error('Conversation query not allowed');
+          throw new Error('Check-in query not allowed');
         });
       })
       .catch(err => {
-        console.log(`Error doing conversation query: ${err}`);
+        console.log(`Error doing check-in query: ${err}`);
       });
   }
   // Get based on the employee ID
@@ -57,8 +56,9 @@ const review = (obj, args, context) => {
             .input('ReviewID', sql.Int, currentReview)
             .execute('avp_get_review')
             .then((result2) => {
-              if (result2.recordset.length !== 1) {
-                throw new Error(`Unable to retrieve conversation ${currentReview}`);
+              console.log(`Result: ${JSON.stringify(result2.recordset)}`);
+              if (result2.recordset.length < 1) {
+                throw new Error(`Unable to retrieve check-in ${currentReview}`);
               }
               return loadReview(result2.recordset[0], { status: null });
             })
@@ -67,7 +67,7 @@ const review = (obj, args, context) => {
             });
         });
     }
-    throw new Error('Conversation query not allowed');
+    throw new Error('Check-in query not allowed');
   });
 };
 
@@ -106,7 +106,7 @@ const reviews = (obj, args, context) => {
           return revs;
         });
     }
-    throw new Error('Conversations query not allowed');
+    throw new Error('Check-ins query not allowed');
   });
 };
 
@@ -142,10 +142,10 @@ const questions = (obj, args, context) => {
             });
             return qs;
           }
-          throw new Error('Access not allowed to questions for this conversation.');
+          throw new Error('Access not allowed to questions for this check-in.');
         });
       }
-      throw new Error(`Review ${obj.id} not found.`);
+      throw new Error(`Check-in ${obj.id} not found.`);
     });
   }
   return obj.questions;
@@ -179,7 +179,7 @@ const responses = (obj, args, context) => {
           );
           return rs;
         }
-        throw new Error('Access not allowed to responses for this conversation.');
+        throw new Error('Access not allowed to responses for this check-in.');
       });
     });
   }

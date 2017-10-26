@@ -17,8 +17,8 @@ const executableSchema = makeExecutableSchema({
 // beta version of webpack 2).
 const firebase = require('firebase');
 firebase.initializeApp({
-  serviceAccount: './SimpliCityII-284f9d0ebb83.json',
-  databaseURL: 'https://simplicityii-878be.firebaseio.com',
+  serviceAccount: './coa-converse-firebase-adminsdk-sd9yz-05a18e6d38.json',
+  databaseURL: 'https://coa-converse.firebaseio.com',
 });
 
 const sql = require('mssql');
@@ -46,7 +46,7 @@ pool.connect(err => {
 });
 
 const GRAPHQL_PORT = process.env.PORT || 8080;
-console.log(`The graphql port is ${GRAPHQL_PORT}`);
+console.log(`Check-Ins: the graphql port is ${GRAPHQL_PORT}`);
 const graphQLServer = express().use('*', cors());
 const baseConfig = {
   schema: executableSchema,
@@ -69,10 +69,8 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     console.log('NOT LOGGED IN');
     return baseConfig;
   }
-  console.log('Calling verifyIdToken');
   return firebase.auth().verifyIdToken(req.headers.authorization)
   .then(decodedToken => {
-    console.log(`Got the email ${decodedToken.email}`);
     // Now we need to look up the employee ID
     const query = 'select EmpID from UserMap where Email = ' +
                   `'${decodedToken.email}' COLLATE SQL_Latin1_General_CP1_CI_AS`;
@@ -85,7 +83,6 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
       throw new Error('Unable to find employee by email.');
     })
     .then(employeeId => {
-      console.log(`Got the employee ID ${employeeId}`);
       return pool.request()
       .query(`SELECT TOP(1) * FROM dbo.SuperUsers WHERE EmpID = ${employeeId}`)
       .then(res2 => {
@@ -93,7 +90,6 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
         if (res2.recordset.length === 1) {
           superuser = res2.recordset[0].IsSuperUser !== 0;
         }
-        console.log('Logged in successfully');
         return {
           schema: executableSchema,
           context: {
@@ -112,7 +108,6 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     });
   })
   .catch((error) => {
-    console.log(`Why am I here? The auth header is ${req.headers.authorization}`);
     if (req.headers.authorization !== 'null') {
       console.log(`Error decoding authentication token: ${error}`);
       // throw new Error(`Error decoding authentication token: ${JSON.stringify(error)}`);
@@ -126,6 +121,6 @@ graphQLServer.use('/graphiql', graphiqlExpress({
 }));
 
 graphQLServer.listen(GRAPHQL_PORT, () => console.log(
-  `GraphQL Server is now running on http://localhost:${GRAPHQL_PORT}/graphql`
+  `Check-Ins: GraphQL Server is now running on http://localhost:${GRAPHQL_PORT}/graphql`
 ));
 

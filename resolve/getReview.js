@@ -19,7 +19,7 @@ const getReview = (id, context) => {
     return Promise.resolve(review);
   })
   .catch(err => {
-    throw new Error(`Error retrieving conversation: ${err}`);
+    throw new Error(`Error retrieving check-in: ${err}`);
   });
 };
 
