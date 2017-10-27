@@ -116,9 +116,9 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   });
 }));
 
-graphQLServer.use('/graphiql', graphiqlExpress({
-  endpointURL: '/graphql',
-}));
+// graphQLServer.use('/graphiql', graphiqlExpress({
+//   endpointURL: '/graphql',
+// }));
 
 graphQLServer.listen(GRAPHQL_PORT, () => console.log(
   `Check-Ins: GraphQL Server is now running on http://localhost:${GRAPHQL_PORT}/graphql`
