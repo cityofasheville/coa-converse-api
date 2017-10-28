@@ -117,9 +117,9 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
 }));
 console.log('graphiql server');
 
-graphQLServer.use('/graphiql', graphiqlExpress({
-  endpointURL: '/graphql',
-}));
+// graphQLServer.use('/graphiql', graphiqlExpress({
+//   endpointURL: '/graphql',
+// }));
 
 console.log('listen');
 

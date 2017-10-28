@@ -18,8 +18,7 @@ To update from Github and redeploy, run:
   sudo systemctl restart converse2
 ````
 
-To see the status of the node services, run, e.g., ````sudo systemctl status converse1```` 
-or ````sudo journalctl -u converse1````.
+To see the status of the node services, run, e.g., ````sudo systemctl status converse1```` or ````sudo journalctl -u converse1````.
 
 Node console logging goes to /var/log/messages
 
