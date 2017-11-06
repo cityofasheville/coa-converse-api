@@ -1,6 +1,7 @@
 const sql = require('mssql');
 const getReview = require('./getReview');
 const loadReview = require('./loadReview');
+const notify = require('./notify');
 
 const updateReview = (root, args, context) => {
   const rId = args.id;
@@ -188,35 +189,35 @@ const updateReview = (root, args, context) => {
     let body;
     let toAddress;
     let fromAddress;
-
+    const link = '#';
     switch (transition) {
       case 'Ready':
-        subject = 'Your latest check-in is ready for your acknowledgment';
-        body = 'Your latest check-in is ready for your acknowledgment';
+        subject = notify.texts.ready.subject;
+        body = notify.createBody(notify.texts.ready.body, link);
         toAddress = toEmail;
         fromAddress = context.email;
         break;
       case 'Reopen':
-        subject = 'You have a check-in that has been re-opened';
-        body = 'You have a check-in that has been re-opened';
+        subject = notify.texts.reopen.subject;
+        body = notify.createBody(notify.texts.reopen.body, link);
         toAddress = toEmail;
         fromAddress = context.email;
         break;
       case 'Acknowledged':
-        subject = 'You have a check-in that has been acknowledged';
-        body = 'You have a check-in that has been acknowledged';
+        subject = notify.texts.acknowledged.subject;
+        body = notify.createBody(notify.texts.acknowledged.body, link);
         toAddress = toEmail;
         fromAddress = context.email;
         break;
       case 'Closed':
-        subject = 'Your supervisor has closed your latest check-in';
-        body = 'Your supervisor has closed your latest check-in';
+        subject = notify.texts.closed.subject;
+        body = notify.createBody(notify.texts.closed.body, link);
         toAddress = toEmail;
         fromAddress = context.email;
         break;
       case 'ReopenBySup':
-        subject = 'Your supervisor has reopened your check-in';
-        body = 'Your supervisor has reopened your check-in. You will receive another notification when it is ready for acknowledgment.';
+        subject = notify.texts.reopenbysup.subject;
+        body = notify.createBody(notify.texts.reopenbysup.body, link);
         toAddress = toEmail;
         fromAddress = context.email;
         break;
@@ -225,16 +226,16 @@ const updateReview = (root, args, context) => {
     }
 
     console.log(`From: ${fromAddress}, To: ${toAddress}`);
-    const notify = context.pool.request()
+    const doNotify = context.pool.request()
     .input('ToAddress', sql.NVarChar, toAddress)
     .input('FromAddress', sql.NVarChar, fromAddress)
     .input('Subject', sql.NVarChar, subject)
     .input('Body', sql.NVarChar, body)
     .query('INSERT INTO Notifications '
       + '(ToAddress, FromAddress, Subject, BodyFormat, Body) '
-      + "VALUES (@ToAddress, @FromAddress, @Subject,'TEXT',@Body)");
+      + "VALUES (@ToAddress, @FromAddress, @Subject,'HTML',@Body)");
 
-    return notify.then(res5 => {
+    return doNotify.then(res5 => {
       if (res5.error) {
         return Promise.resolve(res5);
       }
