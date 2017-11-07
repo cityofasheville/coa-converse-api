@@ -34,7 +34,6 @@ const msconfig = {
   },
 };
 
-console.log(`Parameters: ${JSON.stringify(msconfig)}`);
 const pool = new sql.ConnectionPool(msconfig);
 pool.on('error', err => {
   throw new Error(`Error on database connection pool: ${err}`);

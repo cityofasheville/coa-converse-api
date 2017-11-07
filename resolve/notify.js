@@ -39,7 +39,7 @@ const createBody = (bodyParagraphs, link) => {
   const body = bodyParagraphs.reduce((prevVal, curVal) => {
     return `${prevVal}<p>${curVal}</p>`;
   }, '');
-  const lBody = `<p><a href="${link}">View check-in</a>.</p>`;
+  const lBody = `<p><a href="${link}">Visit check-in tool</a>.</p>`;
   return body + lBody;
 };
 
