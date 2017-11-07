@@ -189,7 +189,7 @@ const updateReview = (root, args, context) => {
     let body;
     let toAddress;
     let fromAddress;
-    const link = '#';
+    const link = `https://check-in.ashevillenc.gov/check-in?check-in=${rId}`;
     switch (transition) {
       case 'Ready':
         subject = notify.texts.ready.subject;
