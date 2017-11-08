@@ -121,7 +121,7 @@ const questions = (obj, args, context) => {
         const rev = result.recordset[0];
         if (context.employee_id === rev.employee_id &&
             context.employee_id === rev.supervisor_id) {
-          verifyAllowed = Promise.resolve(true)
+          verifyAllowed = Promise.resolve(true);
         } else {
           verifyAllowed = operationIsAllowed(rev.supervisor_id, context);
         }

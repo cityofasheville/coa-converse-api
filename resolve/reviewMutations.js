@@ -1,19 +1,22 @@
 const sql = require('mssql');
 const getReview = require('./getReview');
 const loadReview = require('./loadReview');
+const notify = require('./notify');
 
 const updateReview = (root, args, context) => {
   const rId = args.id;
   const inRev = args.review;
   let seq = Promise.resolve({ error: false });
   let newStatus = null;
-  seq = getReview(rId, context)
+  let transition = null;
+  let toId = null; // We'll need for looking up email address.
+  let toEmail = null;
+  seq = getReview(rId, context) // Load information from Reviews table
   .then(review => {
+    // Verify we have a valid user and status transition
     let status = review.status;
-//    let periodStart = review.periodStart;
     let periodEnd = review.periodEnd;
     let doSave = false;
-
     if (context.employee_id !== review.employee_id &&
         context.employee_id !== review.supervisor_id) {
       throw new Error('Only the supervisor or employee can modify a check-in');
@@ -54,6 +57,20 @@ const updateReview = (root, args, context) => {
         if (errorString !== null) {
           return Promise.resolve({ error: true, errorString });
         }
+
+        if (status === 'Open') {
+          transition = 'Ready';
+          toId = review.employee_id;
+        } else if (status === 'Ready') {
+          if (newStatus === 'Open') transition = 'Reopen';
+          else transition = 'Acknowledged';
+          toId = review.supervisor_id;
+        } else if (status === 'Acknowledged') {
+          if (newStatus === 'Closed') transition = 'Closed';
+          else transition = 'ReopenBySup';
+          toId = review.employee_id;
+        }
+
         status = newStatus;
         if (errorString !== null) {
           throw new Error(errorString);
@@ -61,14 +78,7 @@ const updateReview = (root, args, context) => {
       }
     }
 
-    // 8/8/17: We no longer allow periodStart to be updated via mutation.
-    /*
-      if (inRev.hasOwnProperty('periodStart')) {
-        // Need to validate
-        doSave = true;
-        periodStart = inRev.periodStart;
-      }
-    */
+    // Update values in Reviews table
     if (inRev.hasOwnProperty('periodEnd')) {
       // Need to validate
       doSave = true;
@@ -92,10 +102,25 @@ const updateReview = (root, args, context) => {
     }
     return Promise.resolve({ error: false });
   })
+  .then(revRes2 => {
+    if (transition === null) return Promise.resolve(revRes2);
+    const query = `select Email from UserMap where EmpID = ${toId}`;
+    return context.pool.request()
+    .query(query)
+    .then(email => {
+      if (email.recordset.length > 0) {
+        toEmail = email.recordset[0].Email;
+        return Promise.resolve(revRes2);
+      }
+      throw new Error('Unable to find email by ID.');
+    });
+  })
   .catch(revErr => {
     throw new Error(`Error updating check-in: ${revErr}`);
   });
-  return seq.then(res1 => { // Deal with the questions
+
+  // Done with Review table, deal with the questions, responses, notifications.
+  return seq.then(res1 => {
     if (!res1.error && inRev.questions !== null && inRev.questions.length > 0) {
       const updateQuestions = inRev.questions.map(q => {
         const qId = q.id;
@@ -131,34 +156,11 @@ const updateReview = (root, args, context) => {
         .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
       });
       return Promise.all(updateResponses);
-      // let req = context.pool.request();
-      // let qId = null;
-      // if (inRev.responses[0].hasOwnProperty('question_id')) {
-      //   qId = inRev.responses[0].question_id;
-      // }
-      // if (qId === null) {
-      //   req = req
-      //   .input('response', sql.NVarChar, inRev.responses[0].Response)
-      //   .input('rid', sql.Int, rId)
-      //   .query('UPDATE Responses SET Response = @response WHERE R_ID = @rid');
-      // } else {
-      //   req = req
-      //   .input('response', sql.NVarChar, inRev.responses[0].Response)
-      //   .input('rid', sql.Int, rId)
-      //   .input('qid', sql.Int, qId)
-      //   .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
-      // }
-      // return req
-      // .then(respRes => {
-      //   if (respRes.rowsAffected === null || respRes.rowsAffected[0] !== 1) {
-      //     throw new Error('Error updating response');
-      //   }
-      //   return Promise.resolve({ error: false });
-      // });
     }
     return Promise.resolve(res2);
   })
-  .then(res3 => { // All done - either error or return the updated review
+  .then(res3 => {
+    // All done - either error or return the updated review
     if (res3.error) {
       return Promise.resolve(res3);
     }
@@ -177,6 +179,68 @@ const updateReview = (root, args, context) => {
       .catch(err => {
         throw new Error(`Error doing check-in query: ${err}`);
       });
+  })
+  .then(res4 => {
+    if (transition === null || res4.error) {
+      return Promise.resolve(res4);
+    }
+    // We have a status transition - trigger a notification.
+    let subject;
+    let body;
+    let toAddress;
+    let fromAddress;
+    const link = 'https://check-in.ashevillenc.gov';
+    switch (transition) {
+      case 'Ready':
+        subject = notify.texts.ready.subject;
+        body = notify.createBody(notify.texts.ready.body, link);
+        toAddress = toEmail;
+        fromAddress = context.email;
+        break;
+      case 'Reopen':
+        subject = notify.texts.reopen.subject;
+        body = notify.createBody(notify.texts.reopen.body, link);
+        toAddress = toEmail;
+        fromAddress = context.email;
+        break;
+      case 'Acknowledged':
+        subject = notify.texts.acknowledged.subject;
+        body = notify.createBody(notify.texts.acknowledged.body, link);
+        toAddress = toEmail;
+        fromAddress = context.email;
+        break;
+      case 'Closed':
+        subject = notify.texts.closed.subject;
+        body = notify.createBody(notify.texts.closed.body, link);
+        toAddress = toEmail;
+        fromAddress = context.email;
+        break;
+      case 'ReopenBySup':
+        subject = notify.texts.reopenbysup.subject;
+        body = notify.createBody(notify.texts.reopenbysup.body, link);
+        toAddress = toEmail;
+        fromAddress = context.email;
+        break;
+      default:
+        throw new Error(`Unknown status transition ${transition} for notification.`);
+    }
+
+    console.log(`From: ${fromAddress}, To: ${toAddress}`);
+    const doNotify = context.pool.request()
+    .input('ToAddress', sql.NVarChar, toAddress)
+    .input('FromAddress', sql.NVarChar, fromAddress)
+    .input('Subject', sql.NVarChar, subject)
+    .input('Body', sql.NVarChar, body)
+    .query('INSERT INTO Notifications '
+      + '(ToAddress, FromAddress, Subject, BodyFormat, Body) '
+      + "VALUES (@ToAddress, @FromAddress, @Subject,'HTML',@Body)");
+
+    return doNotify.then(res5 => {
+      if (res5.error) {
+        return Promise.resolve(res5);
+      }
+      return Promise.resolve(res4);
+    });
   })
   .catch(err => {
     throw new Error(`Error at check-in update end: ${err}`);

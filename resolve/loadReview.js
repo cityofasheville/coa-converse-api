@@ -13,6 +13,8 @@ const loadReview = (r, review) => {
       periodEnd: new Date(r.Period_End).toISOString(),
       reviewer_name: r.Reviewer,
       employee_name: r.Employee,
+      employee_email: r.EmpEmail,
+      supervisor_email: r.ReviewerEmail,
       questions: [],
       responses: [],
     };
