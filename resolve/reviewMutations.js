@@ -11,6 +11,7 @@ const updateReview = (root, args, context) => {
   let transition = null;
   let toId = null; // We'll need for looking up email address.
   let toEmail = null;
+  console.log(`Updating review ${rId}`);
   seq = getReview(rId, context) // Load information from Reviews table
   .then(review => {
     // Verify we have a valid user and status transition

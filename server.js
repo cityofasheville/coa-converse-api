@@ -65,12 +65,15 @@ const baseConfig = {
 };
 console.log('graphql server');
 graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
+  console.log('Entering');
   if (!req.headers.authorization || req.headers.authorization === 'null') {
     console.log('NOT LOGGED IN');
     return baseConfig;
   }
+  console.log('Attempt login verification');
   return firebase.auth().verifyIdToken(req.headers.authorization)
   .then(decodedToken => {
+    console.log(`Logging in ${decodedToken.email}`);
     // Now we need to look up the employee ID
     const query = 'select EmpID from UserMap where Email = ' +
                   `'${decodedToken.email}' COLLATE SQL_Latin1_General_CP1_CI_AS`;
@@ -80,9 +83,11 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
       if (res1.recordset.length > 0) {
         return Promise.resolve(res1.recordset[0].EmpID);
       }
+      console.log('Unable to find employee by email');
       throw new Error('Unable to find employee by email.');
     })
     .then(employeeId => {
+      console.log(`Employee id for login ${decodedToken.email} is ${employeeId}`);
       return pool.request()
       .query(`SELECT TOP(1) * FROM dbo.SuperUsers WHERE EmpID = ${employeeId}`)
       .then(res2 => {
