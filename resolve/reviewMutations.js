@@ -4,6 +4,7 @@ const loadReview = require('./loadReview');
 const notify = require('./notify');
 
 const updateReview = (root, args, context) => {
+  const logger = context.logger;
   const rId = args.id;
   const inRev = args.review;
   let seq = Promise.resolve({ error: false });
@@ -11,7 +12,7 @@ const updateReview = (root, args, context) => {
   let transition = null;
   let toId = null; // We'll need for looking up email address.
   let toEmail = null;
-  console.log(`Updating review ${rId}`);
+  logger.info(`Updating review ${rId}`);
   seq = getReview(rId, context) // Load information from Reviews table
   .then(review => {
     // Verify we have a valid user and status transition
@@ -20,6 +21,7 @@ const updateReview = (root, args, context) => {
     let doSave = false;
     if (context.employee_id !== review.employee_id &&
         context.employee_id !== review.supervisor_id) {
+      logger.error(`Only the supervisor or employee can modify a check-in - user ${context.email}`);
       throw new Error('Only the supervisor or employee can modify a check-in');
     }
     if (inRev.hasOwnProperty('status')) {
@@ -74,6 +76,7 @@ const updateReview = (root, args, context) => {
 
         status = newStatus;
         if (errorString !== null) {
+          logger.error(`Check-in update error for user ${context.email}: ${errorString}`);
           throw new Error(errorString);
         }
       }
@@ -117,6 +120,7 @@ const updateReview = (root, args, context) => {
     });
   })
   .catch(revErr => {
+    logger.error(`Error updating check-in by ${context.email}: ${revErr}`);
     throw new Error(`Error updating check-in: ${revErr}`);
   });
 
@@ -244,6 +248,7 @@ const updateReview = (root, args, context) => {
     });
   })
   .catch(err => {
+    logger.error(`Error updating check-in: ${err}`);
     throw new Error(`Error at check-in update end: ${err}`);
   });
 };

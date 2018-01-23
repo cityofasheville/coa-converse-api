@@ -1,6 +1,6 @@
 const sql = require('mssql');
 
-const getEmployee = (id, pool) => {
+const getEmployee = (id, pool, logger) => {
   return pool.request()
     .input('UserEmpID', sql.Int, id)
     .execute('avp_Get_Employee')
@@ -27,6 +27,7 @@ const getEmployee = (id, pool) => {
       });
     })
     .catch(err => {
+      logger.error(`Error getting employee ${err}`);
       return Promise.resolve({ error: `Error getting employee: ${err}` });
     });
 };

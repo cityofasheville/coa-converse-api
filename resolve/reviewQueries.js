@@ -6,8 +6,9 @@ const operationIsAllowed = require('./operationIsAllowed');
 
 const review = (obj, args, context) => {
   const pool = context.pool;
+  const logger = context.logger;
   const id = args.id;
-  console.log(`Getting employee check-in ${id}`);
+  logger.info(`Getting employee check-in ${id}`);
   if (args.hasOwnProperty('id') && id !== -1) {
     return pool.request()
       .input('ReviewID', sql.Int, id)
@@ -31,7 +32,7 @@ const review = (obj, args, context) => {
         });
       })
       .catch(err => {
-        console.log(`Error doing check-in query: ${err}`);
+        logger.error(`Error doing check-in query by ${context.email}: ${err}`);
       });
   }
   // Get based on the employee ID
@@ -50,7 +51,7 @@ const review = (obj, args, context) => {
         .then(emp => {
           const currentReview = emp.current_review;
           if (currentReview === null || currentReview === 0) {
-            return createCurrentReview(emp, pool);
+            return createCurrentReview(emp, pool, logger);
           }
           return pool.request()
             .input('ReviewID', sql.Int, currentReview)
@@ -62,16 +63,19 @@ const review = (obj, args, context) => {
               return loadReview(result2.recordset[0], { status: null });
             })
             .catch(err => {
+              logger.error(`Error retrieving check-in for ${context.email}: ${err}`);
               throw new Error(err);
             });
         });
     }
-    throw new Error('Check-in query not allowed');
+    logger.error(`Check-in query not allowed for user ${context.email}`);
+    throw new Error(`Check-in query not allowed for user ${context.email}`);
   });
 };
 
 const reviews = (obj, args, context) => {
   const pool = context.pool;
+  const logger = context.logger;
   const id = obj.id;
   const revs = [];
   let verifyAllowed = Promise.resolve(true);
@@ -105,6 +109,7 @@ const reviews = (obj, args, context) => {
           return revs;
         });
     }
+    logger.error(`Check-ins query not allowed for user ${context.email}`);
     throw new Error('Check-ins query not allowed');
   });
 };
@@ -112,6 +117,7 @@ const reviews = (obj, args, context) => {
 const questions = (obj, args, context) => {
   if (obj.questions === null) {
     const pool = context.pool;
+    const logger = context.logger;
     return pool.request()
     .input('ReviewID', sql.Int, obj.id)
     .execute('avp_get_review')
@@ -141,9 +147,11 @@ const questions = (obj, args, context) => {
             });
             return qs;
           }
+          logger.error('Access not allowed to questions for this check-in.');
           throw new Error('Access not allowed to questions for this check-in.');
         });
       }
+      logger.error(`Check-in ${obj.id} not found.`);
       throw new Error(`Check-in ${obj.id} not found.`);
     });
   }
@@ -153,6 +161,7 @@ const questions = (obj, args, context) => {
 const responses = (obj, args, context) => {
   if (obj.responses === null) {
     const pool = context.pool;
+    const logger = context.logger;
     return pool.request()
     .input('ReviewID', sql.Int, obj.id)
     .execute('avp_get_review')
@@ -178,6 +187,7 @@ const responses = (obj, args, context) => {
           );
           return rs;
         }
+        logger.error('Access not allowed to responses for this check-in.');
         throw new Error('Access not allowed to responses for this check-in.');
       });
     });
