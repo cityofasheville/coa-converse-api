@@ -20,6 +20,23 @@ const employee = (obj, args, context) => {
   throw new Error('In employee query - employee_id not set');
 };
 
+const isReviewable = (e) => {
+  return (
+    e.Active && e.Position !== null && e.Position !== '' &&
+    e.Emp_Email !== null && e.Emp_Email !== ''
+  );
+};
+
+const notReviewableReason = (e) => {
+  let reason = null;
+  if (!isReviewable(e)) {
+    if (!e.Active) reason = 'Inactive';
+    else if (e.Position === null || e.Position === '') reason = 'No position';
+    else reason = 'Employee not registered for Employee Check-in';
+  }
+  return reason;
+};
+
 const employees = (obj, args, context) => {
   const pool = context.pool;
   const id = obj.id;// AUTH HERE before doing the rest of the query.
@@ -43,7 +60,8 @@ const employees = (obj, args, context) => {
             division: e.Division,
             last_reviewed: lastRev,
             review_by: new Date(e.ReviewBy).toISOString(),
-            reviewable: e.Active && e.Position !== null && e.Position !== '',
+            reviewable: isReviewable(e),
+            not_reviewable_reason: notReviewableReason(e),
             supervisor_id: e.SupID,
             supervisor_name: e.Supervisor,
             supervisor_email: e.Sup_Email,
@@ -52,7 +70,7 @@ const employees = (obj, args, context) => {
           };
           myEmployees.push(emp);
         });
-        return myEmployees;
+        return Promise.resolve(myEmployees);
       });
     }
     throw new Error('Employees query not allowed');

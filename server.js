@@ -131,9 +131,9 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   });
 }));
 
-// graphQLServer.use('/graphiql', graphiqlExpress({
-//   endpointURL: '/graphql',
-// }));
+graphQLServer.use('/graphiql', graphiqlExpress({
+  endpointURL: '/graphql',
+}));
 
 logger.info(`Start listening on port ${GRAPHQL_PORT}`);
 

@@ -4,13 +4,14 @@ const baseSchema = `
     id: Int!
     active: Boolean!
     name: String!
-    email: String!
+    email: String
     position: String
     department: String
     division: String
     current_review: Int
     last_reviewed: String
     reviewable: Boolean
+    not_reviewable_reason: String
     review_by: String
     supervisor_id: Int!
     supervisor_name: String
