@@ -22,7 +22,7 @@ const employee = (obj, args, context) => {
 
 const isReviewable = (e) => {
   return (
-    e.Active && e.Position !== null && e.Position !== '' &&
+    e.Active === 'A' && e.Position !== null && e.Position !== '' &&
     e.Emp_Email !== null && e.Emp_Email !== ''
   );
 };
@@ -30,7 +30,7 @@ const isReviewable = (e) => {
 const notReviewableReason = (e) => {
   let reason = null;
   if (!isReviewable(e)) {
-    if (!e.Active) reason = 'Inactive';
+    if (e.Active !== 'A') reason = 'Inactive';
     else if (e.Position === null || e.Position === '') reason = 'No position';
     else reason = 'Employee not registered for Employee Check-in';
   }
@@ -48,7 +48,9 @@ const employees = (obj, args, context) => {
       .input('UserEmpID', sql.Int, id)
       .execute('avp_Get_My_Employees')
       .then(result => {
-        result.recordset.forEach(e => {
+        result.recordset.filter(e => {
+          return e.Active === 'A';
+        }).forEach(e => {
           const lastRev = (e.LastReviewed === null) ? null : new Date(e.LastReviewed).toISOString();
           const emp = {
             id: e.EmpID,
