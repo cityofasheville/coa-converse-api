@@ -11,7 +11,7 @@ const getReview = (id, context) => {
       id: r.R_ID,
       status: r.Status,
       status_date: new Date(r.Status_Date).toISOString(),
-      periodStart: new Date(r.Period_Start).toISOString(),
+      periodStart: null, // Currently not in use.
       periodEnd: new Date(r.Period_End).toISOString(),
       reviewer_name: r.Reviewer,
       employee_name: r.Employee,

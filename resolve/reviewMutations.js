@@ -95,7 +95,7 @@ const updateReview = (root, args, context) => {
     return context.pool.request()
       .input('rid', sql.Int, rId)
       .input('status', sql.NVarChar, status)
-      .input('start', sql.Date, inRev.periodStart)
+      .input('start', sql.Date, null) // Currently not in use
       .input('end', sql.Date, periodEnd)
       .query(updQuery);
   })

@@ -97,7 +97,7 @@ const reviews = (obj, args, context) => {
               supervisor_id: r.SupID,
               employee_id: r.EmpID,
               position: r.Position,
-              periodStart: new Date(r.Period_Start).toISOString(),
+              periodStart: null, // Currently not in use
               periodEnd: new Date(r.Period_End).toISOString(),
               reviewer_name: r.Reviewer,
               employee_name: r.Employee,
