@@ -1,4 +1,5 @@
 const sql = require('mssql');
+const getFullReview = require('./getFullReview');
 const loadReview = require('./loadReview');
 
 const createCurrentReview = (emp, pool, logger) => {
@@ -15,22 +16,7 @@ const createCurrentReview = (emp, pool, logger) => {
   .execute('avp_New_Review')
   .then(result => {
     const currentReviewId = result.output.R_ID;
-    return pool.request()
-      .input('ReviewID', sql.Int, currentReviewId)
-      .execute('avp_get_review')
-      .then((result2) => {
-        let rev = {
-          status: null,
-        };
-        result2.recordset.forEach(r => {
-          rev = loadReview(r, rev);
-        });
-        return rev;
-      })
-      .catch(err => {
-        logger.error(`Error doing check-in query in createCurrentReview: ${err}`);
-        throw new Error(`Error doing check-in query: ${err}`);
-      });
+    return getFullReview(currentReviewId, pool, logger);
   })
   .catch(err => {
     logger.error(`Error creating new check-in in createCurrentReview: ${err}`);

@@ -1,6 +1,6 @@
 const sql = require('mssql');
 
-const getReview = (id, context) => {
+const getReviewRecord = (id, context) => {
   const logger = context.logger;
   return context.pool.request()
   .input('rid', sql.Int, id)
@@ -21,9 +21,9 @@ const getReview = (id, context) => {
     return Promise.resolve(review);
   })
   .catch(err => {
-    logger.error(`Error retrieving check-in ${id}: ${err} for user ${context.email}`);
-    throw new Error(`Error retrieving check-in: ${err}`);
+    logger.error(`Error retrieving check-in record ${id}: ${err} for user ${context.email}`);
+    throw new Error(`Error retrieving check-in record: ${err}`);
   });
 };
 
-module.exports = getReview;
+module.exports = getReviewRecord;

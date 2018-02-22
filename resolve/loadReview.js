@@ -11,6 +11,7 @@ const loadReview = (r, review) => {
       position: r.Position,
       periodStart: null, // Currently not in use
       periodEnd: new Date(r.Period_End).toISOString(),
+      previousReviewDate: null,
       reviewer_name: r.Reviewer,
       employee_name: r.Employee,
       employee_email: r.EmpEmail,

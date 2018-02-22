@@ -1,5 +1,6 @@
 const sql = require('mssql');
-const getReview = require('./getReview');
+const getReviewRecord = require('./getReviewRecord');
+const getFullReview = require('./getFullReview');
 const loadReview = require('./loadReview');
 const notify = require('./notify');
 
@@ -13,7 +14,7 @@ const updateReview = (root, args, context) => {
   let toId = null; // We'll need for looking up email address.
   let toEmail = null;
   logger.info(`Updating review ${rId}`);
-  seq = getReview(rId, context) // Load information from Reviews table
+  seq = getReviewRecord(rId, context) // Load information from Reviews table
   .then(review => {
     // Verify we have a valid user and status transition
     let status = review.status;
@@ -169,21 +170,13 @@ const updateReview = (root, args, context) => {
     if (res3.error) {
       return Promise.resolve(res3);
     }
-    return context.pool.request()
-      .input('ReviewID', sql.Int, args.id)
-      .execute('avp_get_review')
-      .then((result) => {
-        let review = {
-          status: null,
-        };
-        result.recordset.forEach(r => {
-          review = loadReview(r, review);
-        });
-        return Promise.resolve(review);
-      })
-      .catch(err => {
-        throw new Error(`Error doing check-in query: ${err}`);
-      });
+    let review = {
+      status: null,
+    };
+    return getFullReview(args.id, context.pool, logger)
+    .catch(err => {
+      throw new Error(`Error doing check-in query: ${err}`);
+    });
   })
   .then(res4 => {
     if (transition === null || res4.error) {
