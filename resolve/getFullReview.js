@@ -19,7 +19,8 @@ const getFullReview = (reviewId, pool, logger) => {
     return pool.request().query(query)
     .then(dmax => {
       if (dmax.recordset.length > 0) {
-        review.previousReviewDate = dmax.recordset[0].previousReviewDate;
+        review.previousReviewDate = new Date(dmax.recordset[0].previousReviewDate).toISOString();
+        // review.previousReviewDate = dmax.recordset[0].previousReviewDate;
       }
       return review;
     });
