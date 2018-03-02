@@ -127,6 +127,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
           schema: executableSchema,
           context: {
             pool,
+            whPool,
             logger,
             employee_id: employeeId,
 //            employee_id: 1316,

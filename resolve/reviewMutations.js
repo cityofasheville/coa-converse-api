@@ -1,7 +1,6 @@
 const sql = require('mssql');
 const getReviewRecord = require('./getReviewRecord');
 const getFullReview = require('./getFullReview');
-const loadReview = require('./loadReview');
 const notify = require('./notify');
 
 const updateReview = (root, args, context) => {
@@ -107,19 +106,6 @@ const updateReview = (root, args, context) => {
     }
     return Promise.resolve({ error: false });
   })
-  .then(revRes2 => {
-    if (transition === null) return Promise.resolve(revRes2);
-    const query = `select Email from UserMap where EmpID = ${toId}`;
-    return context.pool.request()
-    .query(query)
-    .then(email => {
-      if (email.recordset.length > 0) {
-        toEmail = email.recordset[0].Email;
-        return Promise.resolve(revRes2);
-      }
-      throw new Error('Unable to find email by ID.');
-    });
-  })
   .catch(revErr => {
     logger.error(`Error updating check-in by ${context.email}: ${revErr}`);
     throw new Error(`Error updating check-in: ${revErr}`);
@@ -170,12 +156,23 @@ const updateReview = (root, args, context) => {
     if (res3.error) {
       return Promise.resolve(res3);
     }
-    let review = {
-      status: null,
-    };
+
     return getFullReview(args.id, context.pool, logger)
     .catch(err => {
       throw new Error(`Error doing check-in query: ${err}`);
+    });
+  })
+  .then(revRes2 => {
+    if (transition === null) return Promise.resolve(revRes2);
+    const query = 'select email_city from amd.ad_info where emp_id = ' +
+                  `'${toId}'`;
+    return context.whPool.query(query)
+    .then(email => {
+      if (email.rows.length > 0) {
+        toEmail = email.rows[0].email_city;
+        return Promise.resolve(revRes2);
+      }
+      throw new Error('Changes have been saved, but unable to find email for notification.');
     });
   })
   .then(res4 => {
@@ -188,6 +185,7 @@ const updateReview = (root, args, context) => {
     let toAddress;
     let fromAddress;
     const link = 'https://check-in.ashevillenc.gov';
+
     switch (transition) {
       case 'Ready':
         subject = notify.texts.ready.subject;
@@ -223,7 +221,6 @@ const updateReview = (root, args, context) => {
         throw new Error(`Unknown status transition ${transition} for notification.`);
     }
 
-    console.log(`From: ${fromAddress}, To: ${toAddress}`);
     const doNotify = context.pool.request()
     .input('ToAddress', sql.NVarChar, toAddress)
     .input('FromAddress', sql.NVarChar, fromAddress)
