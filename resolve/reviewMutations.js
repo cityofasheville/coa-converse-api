@@ -1,6 +1,6 @@
 const sql = require('mssql');
-const getReview = require('./getReview');
-const loadReview = require('./loadReview');
+const getReviewRecord = require('./getReviewRecord');
+const getFullReview = require('./getFullReview');
 const notify = require('./notify');
 
 const updateReview = (root, args, context) => {
@@ -13,7 +13,7 @@ const updateReview = (root, args, context) => {
   let toId = null; // We'll need for looking up email address.
   let toEmail = null;
   logger.info(`Updating review ${rId}`);
-  seq = getReview(rId, context) // Load information from Reviews table
+  seq = getReviewRecord(rId, context) // Load information from Reviews table
   .then(review => {
     // Verify we have a valid user and status transition
     let status = review.status;
@@ -95,7 +95,7 @@ const updateReview = (root, args, context) => {
     return context.pool.request()
       .input('rid', sql.Int, rId)
       .input('status', sql.NVarChar, status)
-      .input('start', sql.Date, inRev.periodStart)
+      .input('start', sql.Date, null) // Currently not in use
       .input('end', sql.Date, periodEnd)
       .query(updQuery);
   })
@@ -105,19 +105,6 @@ const updateReview = (root, args, context) => {
       return Promise.resolve({ error: true, errorString: 'Error updating period' });
     }
     return Promise.resolve({ error: false });
-  })
-  .then(revRes2 => {
-    if (transition === null) return Promise.resolve(revRes2);
-    const query = `select Email from UserMap where EmpID = ${toId}`;
-    return context.pool.request()
-    .query(query)
-    .then(email => {
-      if (email.recordset.length > 0) {
-        toEmail = email.recordset[0].Email;
-        return Promise.resolve(revRes2);
-      }
-      throw new Error('Unable to find email by ID.');
-    });
   })
   .catch(revErr => {
     logger.error(`Error updating check-in by ${context.email}: ${revErr}`);
@@ -169,21 +156,24 @@ const updateReview = (root, args, context) => {
     if (res3.error) {
       return Promise.resolve(res3);
     }
-    return context.pool.request()
-      .input('ReviewID', sql.Int, args.id)
-      .execute('avp_get_review')
-      .then((result) => {
-        let review = {
-          status: null,
-        };
-        result.recordset.forEach(r => {
-          review = loadReview(r, review);
-        });
-        return Promise.resolve(review);
-      })
-      .catch(err => {
-        throw new Error(`Error doing check-in query: ${err}`);
-      });
+
+    return getFullReview(args.id, context.pool, logger)
+    .catch(err => {
+      throw new Error(`Error doing check-in query: ${err}`);
+    });
+  })
+  .then(revRes2 => {
+    if (transition === null) return Promise.resolve(revRes2);
+    const query = 'select email_city from amd.ad_info where emp_id = ' +
+                  `'${toId}'`;
+    return context.whPool.query(query)
+    .then(email => {
+      if (email.rows.length > 0) {
+        toEmail = email.rows[0].email_city;
+        return Promise.resolve(revRes2);
+      }
+      throw new Error('Changes have been saved, but unable to find email for notification.');
+    });
   })
   .then(res4 => {
     if (transition === null || res4.error) {
@@ -195,6 +185,7 @@ const updateReview = (root, args, context) => {
     let toAddress;
     let fromAddress;
     const link = 'https://check-in.ashevillenc.gov';
+
     switch (transition) {
       case 'Ready':
         subject = notify.texts.ready.subject;
@@ -230,7 +221,6 @@ const updateReview = (root, args, context) => {
         throw new Error(`Unknown status transition ${transition} for notification.`);
     }
 
-    console.log(`From: ${fromAddress}, To: ${toAddress}`);
     const doNotify = context.pool.request()
     .input('ToAddress', sql.NVarChar, toAddress)
     .input('FromAddress', sql.NVarChar, fromAddress)

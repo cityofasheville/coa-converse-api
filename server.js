@@ -26,6 +26,23 @@ firebase.initializeApp({
 });
 logger.info('Firebase initialized');
 
+const pg = require('pg');
+pg.defaults.poolSize = 1;
+const PgPool = pg.Pool;
+
+const whConfig = {
+  host: process.env.wh_dbhost,
+  user: process.env.wh_dbuser,
+  password: process.env.wh_dbpassword,
+  database: process.env.wh_database,
+  port: 5432,
+  ssl: false,
+};
+
+logger.info('Connect to database');
+
+const whPool = new PgPool(whConfig);
+
 const sql = require('mssql');
 const msconfig = {
   user: process.env.dbuser,
@@ -60,6 +77,7 @@ const baseConfig = {
   schema: executableSchema,
   context: {
     pool,
+    whPool,
     logger,
     employee_id: 0,
     superuser: false,
@@ -82,17 +100,17 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   logger.info('Attempt login verification');
   return firebase.auth().verifyIdToken(req.headers.authorization)
   .then(decodedToken => {
-    logger.info(`Logging in ${decodedToken.email} - look up employee ID`);
+    const decodedEmail = decodedToken.email.toLowerCase();
+    logger.info(`Logging in ${decodedEmail} - look up employee ID`);
     // Now we need to look up the employee ID
-    const query = 'select EmpID from UserMap where Email = ' +
-                  `'${decodedToken.email}' COLLATE SQL_Latin1_General_CP1_CI_AS`;
-    return pool.request()
-    .query(query)
+    const query = 'select emp_id from amd.ad_info where email_city = ' +
+                  `'${decodedEmail}'`;
+    return whPool.query(query)
     .then(res1 => {
-      if (res1.recordset.length > 0) {
-        return Promise.resolve(res1.recordset[0].EmpID);
+      if (res1.rows.length > 0) {
+        return Promise.resolve(res1.rows[0].emp_id);
       }
-      logger.error(`Unable to match employee by email ${decodedToken.email}`);
+      logger.error(`Unable to match employee by email ${decodedEmail}`);
       throw new Error('Unable to find employee by email.');
     })
     .then(employeeId => {
@@ -109,6 +127,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
           schema: executableSchema,
           context: {
             pool,
+            whPool,
             logger,
             employee_id: employeeId,
 //            employee_id: 1316,

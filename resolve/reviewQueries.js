@@ -1,5 +1,5 @@
 const sql = require('mssql');
-const loadReview = require('./loadReview');
+const getFullReview = require('./getFullReview');
 const getEmployee = require('./getEmployee.js');
 const createCurrentReview = require('./createCurrentReview');
 const operationIsAllowed = require('./operationIsAllowed');
@@ -8,32 +8,25 @@ const review = (obj, args, context) => {
   const pool = context.pool;
   const logger = context.logger;
   const id = args.id;
+
   logger.info(`Getting employee check-in ${id}`);
   if (args.hasOwnProperty('id') && id !== -1) {
-    return pool.request()
-      .input('ReviewID', sql.Int, id)
-      .execute('avp_get_review')
-      .then((result) => {
-        let rev = {
-          status: null,
-        };
-        result.recordset.forEach(r => {
-          rev = loadReview(r, rev);
-        });
-        if (context.employee_id === rev.employee_id) {
-          return rev;
+    return getFullReview(id, pool, logger)
+    .then(reviewOut => {
+      if (context.employee_id === reviewOut.employee_id) {
+        return reviewOut;
+      }
+      return operationIsAllowed(reviewOut.supervisor_id, context)
+      .then(isAllowed => {
+        if (isAllowed) {
+          return reviewOut;
         }
-        return operationIsAllowed(rev.supervisor_id, context)
-        .then(isAllowed => {
-          if (isAllowed) {
-            return rev;
-          }
-          throw new Error('Check-in query not allowed');
-        });
-      })
-      .catch(err => {
-        logger.error(`Error doing check-in query by ${context.email}: ${err}`);
+        throw new Error('Check-in query not allowed');
       });
+    })
+    .catch(err => {
+      logger.error(`Error doing check-in query by ${context.email}: ${err}`);
+    });
   }
   // Get based on the employee ID
   let employeeId = context.employee_id;
@@ -53,19 +46,11 @@ const review = (obj, args, context) => {
           if (currentReview === null || currentReview === 0) {
             return createCurrentReview(emp, pool, logger);
           }
-          return pool.request()
-            .input('ReviewID', sql.Int, currentReview)
-            .execute('avp_get_review')
-            .then((result2) => {
-              if (result2.recordset.length < 1) {
-                throw new Error(`Unable to retrieve check-in ${currentReview}`);
-              }
-              return loadReview(result2.recordset[0], { status: null });
-            })
-            .catch(err => {
-              logger.error(`Error retrieving check-in for ${context.email}: ${err}`);
-              throw new Error(err);
-            });
+          return getFullReview(currentReview, pool, logger)
+          .catch(err => {
+            logger.error(`Error retrieving check-in for ${context.email}: ${err}`);
+            throw new Error(err);
+          });
         });
     }
     logger.error(`Check-in query not allowed for user ${context.email}`);
@@ -97,7 +82,7 @@ const reviews = (obj, args, context) => {
               supervisor_id: r.SupID,
               employee_id: r.EmpID,
               position: r.Position,
-              periodStart: new Date(r.Period_Start).toISOString(),
+              periodStart: null, // Currently not in use
               periodEnd: new Date(r.Period_End).toISOString(),
               reviewer_name: r.Reviewer,
               employee_name: r.Employee,

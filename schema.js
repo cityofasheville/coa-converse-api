@@ -27,6 +27,7 @@ const baseSchema = `
     supervisor_id: Int!
     employee_id: Int!
     position: String
+    previousReviewDate: String
     periodStart: String
     periodEnd: String
     reviewer_name: String
