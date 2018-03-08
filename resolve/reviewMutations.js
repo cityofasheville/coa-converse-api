@@ -13,6 +13,12 @@ const updateReview = (root, args, context) => {
   let toId = null; // We'll need for looking up email address.
   let toEmail = null;
   logger.info(`Updating review ${rId}`);
+  if (context.email === null) {
+    // Probably just a need to refresh the auth token
+    throw new Error('User unauthenticated. '
+    + 'This may simply be a token refresh problem. '
+    + 'Try saving again.');
+  }
   seq = getReviewRecord(rId, context) // Load information from Reviews table
   .then(review => {
     // Verify we have a valid user and status transition
