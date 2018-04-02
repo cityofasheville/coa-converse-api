@@ -1,6 +1,7 @@
 const sql = require('mssql');
 const getReviewRecord = require('./getReviewRecord');
 const getFullReview = require('./getFullReview');
+const getEmployee = require('./getEmployee');
 const notify = require('./notify');
 
 const updateReview = (root, args, context) => {
@@ -21,14 +22,15 @@ const updateReview = (root, args, context) => {
   }
   seq = getReviewRecord(rId, context) // Load information from Reviews table
   .then(review => {
+    let employee = Promise.resolve({ id: null });
     // Verify we have a valid user and status transition
     let status = review.status;
     let periodEnd = review.periodEnd;
     let doSave = false;
     if (context.employee_id !== review.employee_id &&
         context.employee_id !== review.supervisor_id) {
-      logger.error(`Only the supervisor or employee can modify a check-in - user ${context.email}`);
-      throw new Error('Only the supervisor or employee can modify a check-in');
+      logger.warn(`Current id doesn't match either review employee id or supervisor id. Supervisor change? User email: ${context.email}`);
+      employee = getEmployee(review.employee_id, context.pool, logger);
     }
     if (inRev.hasOwnProperty('status')) {
       newStatus = inRev.status;
@@ -96,14 +98,28 @@ const updateReview = (root, args, context) => {
     }
     if (!doSave) return Promise.resolve({ error: false });
 
-    const updQuery = 'UPDATE Reviews SET Status = @status, Period_Start = @start, ' +
-                     'Period_End = @end WHERE R_ID = @rid';
-    return context.pool.request()
+    return employee.then((employeeInfo) => {
+      let supervisorId = review.supervisor_id;
+      const updQuery = 'UPDATE Reviews SET Status = @status, Period_Start = @start, ' +
+      'Period_End = @end, SupID = @supervisor_id WHERE R_ID = @rid';
+      if (employeeInfo.id !== null) { // Supervisor has changed or we have unauthorized save
+        if (context.employee_id === employeeInfo.supervisor_id) {
+          // Reset the supervisor in the review, there has been a change.
+          logger.warn(`Changing the supervisor of this review to current user ${context.email}`);
+          supervisorId = employeeInfo.supervisor_id;
+        } else {
+          logger.error(`Only the supervisor or employee can modify a check-in - user ${context.email}`);
+          throw new Error('Only the supervisor or employee can modify a check-in');
+        }
+      }
+      return context.pool.request()
       .input('rid', sql.Int, rId)
       .input('status', sql.NVarChar, status)
       .input('start', sql.Date, null) // Currently not in use
       .input('end', sql.Date, periodEnd)
+      .input('supervisor_id', sql.Int, supervisorId)
       .query(updQuery);
+    });
   })
   .then(revRes => {
     if (revRes.error) return Promise.resolve(revRes);
