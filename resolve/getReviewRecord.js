@@ -13,8 +13,8 @@ const getReviewRecord = (id, context) => {
       status_date: new Date(r.Status_Date).toISOString(),
       periodStart: null, // Currently not in use.
       periodEnd: new Date(r.Period_End).toISOString(),
-      reviewer_name: r.Reviewer,
-      employee_name: r.Employee,
+      reviewer_name: r.Reviewer, // Not really there
+      employee_name: r.Employee, // Not really there
       employee_id: r.EmpID,
       supervisor_id: r.SupID,
     };
