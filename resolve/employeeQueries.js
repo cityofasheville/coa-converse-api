@@ -12,9 +12,9 @@ const employee = (obj, args, context) => {
       }
       throw new Error('Employee query not allowed');
     });
-  } else if (context.email !== null) {
-    if (context.employee_id !== null) {
-      return getEmployee(context.employee_id, pool, context.logger);
+  } else if (context.user.email !== null) {
+    if (context.employee.employee_id !== null) {
+      return getEmployee(context.employee.employee_id, pool, context.logger);
     }
   }
   throw new Error('In employee query - employee_id not set');

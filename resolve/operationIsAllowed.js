@@ -2,7 +2,7 @@ const sql = require('mssql');
 
 const operationIsAllowed = (targetId, context) => {
   const pool = context.pool;
-  const myId = context.employee_id;
+  const myId = context.employee.employee_id;
   let isAllowed = false;
   if (context.superuser || myId === targetId) {
     return Promise.resolve(true);
