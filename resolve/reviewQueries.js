@@ -13,7 +13,7 @@ const review = (obj, args, context) => {
   if (args.hasOwnProperty('id') && id !== -1) {
     return getFullReview(id, pool, logger)
     .then(reviewOut => {
-      if (context.employee_id === reviewOut.employee_id) {
+      if (context.employee.employee_id === reviewOut.employee_id) {
         return reviewOut;
       }
       return operationIsAllowed(reviewOut.supervisor_id, context)
@@ -25,11 +25,11 @@ const review = (obj, args, context) => {
       });
     })
     .catch(err => {
-      logger.error(`Error doing check-in query by ${context.email}: ${err}`);
+      logger.error(`Error doing check-in query by ${context.user.email}: ${err}`);
     });
   }
   // Get based on the employee ID
-  let employeeId = context.employee_id;
+  let employeeId = context.employee.employee_id;
   let verifyAllowed = Promise.resolve(true);
   if (args.hasOwnProperty('employee_id')) {
     if (args.employeeId !== employeeId) {
@@ -48,13 +48,13 @@ const review = (obj, args, context) => {
           }
           return getFullReview(currentReview, pool, logger)
           .catch(err => {
-            logger.error(`Error retrieving check-in for ${context.email}: ${err}`);
+            logger.error(`Error retrieving check-in for ${context.user.email}: ${err}`);
             throw new Error(err);
           });
         });
     }
-    logger.error(`Check-in query not allowed for user ${context.email}`);
-    throw new Error(`Check-in query not allowed for user ${context.email}`);
+    logger.error(`Check-in query not allowed for user ${context.user.email}`);
+    throw new Error(`Check-in query not allowed for user ${context.user.email}`);
   });
 };
 
@@ -64,7 +64,7 @@ const reviews = (obj, args, context) => {
   const id = obj.id;
   const revs = [];
   let verifyAllowed = Promise.resolve(true);
-  if (id !== context.employee_id) {
+  if (id !== context.employee.employee_id) {
     verifyAllowed = operationIsAllowed(id, context);
   }
   return verifyAllowed
@@ -94,7 +94,7 @@ const reviews = (obj, args, context) => {
           return revs;
         });
     }
-    logger.error(`Check-ins query not allowed for user ${context.email}`);
+    logger.error(`Check-ins query not allowed for user ${context.user.email}`);
     throw new Error('Check-ins query not allowed');
   });
 };
@@ -110,8 +110,8 @@ const questions = (obj, args, context) => {
       if (result.recordset.length > 0) {
         let verifyAllowed;
         const rev = result.recordset[0];
-        if (context.employee_id === rev.employee_id &&
-            context.employee_id === rev.supervisor_id) {
+        if (context.employee.employee_id === rev.employee_id &&
+            context.employee.employee_id === rev.supervisor_id) {
           verifyAllowed = Promise.resolve(true);
         } else {
           verifyAllowed = operationIsAllowed(rev.supervisor_id, context);
@@ -153,8 +153,8 @@ const responses = (obj, args, context) => {
     .then((result) => {
       const rev = result.recordset[0];
       let verifyAllowed;
-      if (context.employee_id === rev.employee_id &&
-          context.employee_id === rev.supervisor_id) {
+      if (context.employee.employee_id === rev.employee_id &&
+          context.employee.employee_id === rev.supervisor_id) {
         verifyAllowed = Promise.resolve(true);
       } else {
         verifyAllowed = operationIsAllowed(rev.supervisor_id, context);

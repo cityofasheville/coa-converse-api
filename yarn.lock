@@ -1059,6 +1059,12 @@ coa-node-logging@^2.0.3:
   dependencies:
     bunyan "^1.8.5"
 
+coa-web-login@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/coa-web-login/-/coa-web-login-1.0.4.tgz#e29cf202d561661749fe6c60c2e6cb9c9cd6db5f"
+  dependencies:
+    firebase "3.4.1"
+
 code-point-at@^1.0.0:
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/code-point-at/-/code-point-at-1.1.0.tgz#0d070b4d043a5bea33a2f1a40e2edb3d9a4ccf77"

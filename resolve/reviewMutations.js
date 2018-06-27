@@ -14,7 +14,7 @@ const updateReview = (root, args, context) => {
   let toId = null; // We'll need for looking up email address.
   let toEmail = null;
   logger.info(`Updating review ${rId}`);
-  if (context.email === null) {
+  if (context.user.email === null) {
     // Probably just a need to refresh the auth token
     throw new Error('User unauthenticated. '
     + 'This may simply be a token refresh problem. '
@@ -27,9 +27,9 @@ const updateReview = (root, args, context) => {
     let status = review.status;
     let periodEnd = review.periodEnd;
     let doSave = false;
-    if (context.employee_id !== review.employee_id &&
-        context.employee_id !== review.supervisor_id) {
-      logger.warn(`Current id doesn't match either review employee id or supervisor id. Supervisor change? User email: ${context.email}`);
+    if (context.employee.employee_id !== review.employee_id &&
+        context.employee.employee_id !== review.supervisor_id) {
+      logger.warn(`Current id doesn't match either review employee id or supervisor id. Supervisor change? User email: ${context.user.email}`);
       employee = getEmployee(review.employee_id, context.pool, logger);
     }
     if (inRev.hasOwnProperty('status')) {
@@ -45,21 +45,21 @@ const updateReview = (root, args, context) => {
           if (newStatus !== 'Ready') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
-          if (context.employee_id !== review.supervisor_id) {
+          if (context.employee.employee_id !== review.supervisor_id) {
             errorString = 'Only supervisor may modify check-in in Open status';
           }
         } else if (status === 'Ready') {
           if (newStatus !== 'Open' && newStatus !== 'Acknowledged') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
-          if (context.employee_id !== review.employee_id) {
+          if (context.employee.employee_id !== review.employee_id) {
             errorString = 'Only employee may modify check-in in Ready status';
           }
         } else if (status === 'Acknowledged') {
           if (newStatus !== 'Open' && newStatus !== 'Closed') {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
-          if (context.employee_id !== review.supervisor_id) {
+          if (context.employee.employee_id !== review.supervisor_id) {
             errorString = 'Only supervisor may modify check-in in Acknowledged status';
           }
         } else if (status === 'Closed') {
@@ -84,7 +84,7 @@ const updateReview = (root, args, context) => {
 
         status = newStatus;
         if (errorString !== null) {
-          logger.error(`Check-in update error for user ${context.email}: ${errorString}`);
+          logger.error(`Check-in update error for user ${context.user.email}: ${errorString}`);
           throw new Error(errorString);
         }
       }
@@ -103,12 +103,12 @@ const updateReview = (root, args, context) => {
       const updQuery = 'UPDATE Reviews SET Status = @status, Period_Start = @start, ' +
       'Period_End = @end, SupID = @supervisor_id WHERE R_ID = @rid';
       if (employeeInfo.id !== null) { // Supervisor has changed or we have unauthorized save
-        if (context.employee_id === employeeInfo.supervisor_id) {
+        if (context.employee.employee_id === employeeInfo.supervisor_id) {
           // Reset the supervisor in the review, there has been a change.
-          logger.warn(`Changing the supervisor of this review to current user ${context.email}`);
+          logger.warn(`Changing the supervisor of this review to current user ${context.user.email}`);
           supervisorId = employeeInfo.supervisor_id;
         } else {
-          logger.error(`Only the supervisor or employee can modify a check-in - user ${context.email}`);
+          logger.error(`Only the supervisor or employee can modify a check-in - user ${context.user.email}`);
           throw new Error('Only the supervisor or employee can modify a check-in');
         }
       }
@@ -129,7 +129,7 @@ const updateReview = (root, args, context) => {
     return Promise.resolve({ error: false });
   })
   .catch(revErr => {
-    logger.error(`Error updating check-in by ${context.email}: ${revErr}`);
+    logger.error(`Error updating check-in by ${context.user.email}: ${revErr}`);
     throw new Error(`Error updating check-in: ${revErr}`);
   });
 
@@ -213,31 +213,31 @@ const updateReview = (root, args, context) => {
         subject = notify.texts.ready.subject;
         body = notify.createBody(notify.texts.ready.body, link);
         toAddress = toEmail;
-        fromAddress = context.email;
+        fromAddress = context.user.email;
         break;
       case 'Reopen':
         subject = notify.texts.reopen.subject;
         body = notify.createBody(notify.texts.reopen.body, link);
         toAddress = toEmail;
-        fromAddress = context.email;
+        fromAddress = context.user.email;
         break;
       case 'Acknowledged':
         subject = notify.texts.acknowledged.subject;
         body = notify.createBody(notify.texts.acknowledged.body, link);
         toAddress = toEmail;
-        fromAddress = context.email;
+        fromAddress = context.user.email;
         break;
       case 'Closed':
         subject = notify.texts.closed.subject;
         body = notify.createBody(notify.texts.closed.body, link);
         toAddress = toEmail;
-        fromAddress = context.email;
+        fromAddress = context.user.email;
         break;
       case 'ReopenBySup':
         subject = notify.texts.reopenbysup.subject;
         body = notify.createBody(notify.texts.reopenbysup.body, link);
         toAddress = toEmail;
-        fromAddress = context.email;
+        fromAddress = context.user.email;
         break;
       default:
         throw new Error(`Unknown status transition ${transition} for notification.`);

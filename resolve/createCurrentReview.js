@@ -1,6 +1,5 @@
 const sql = require('mssql');
 const getFullReview = require('./getFullReview');
-const loadReview = require('./loadReview');
 
 const createCurrentReview = (emp, pool, logger) => {
   const t1 = new Date();
