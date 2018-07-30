@@ -4,6 +4,11 @@ const getFullReview = require('./getFullReview');
 const getEmployee = require('./getEmployee');
 const notify = require('./notify');
 
+/*
+  Note on rewriting this:
+    1. We should get the employee information earlier and check whether there
+       is a valid switch of supervisor. Right now it's pretty confused logic.
+*/
 const updateReview = (root, args, context) => {
   const logger = context.logger;
   const rId = args.id;
@@ -13,6 +18,8 @@ const updateReview = (root, args, context) => {
   let transition = null;
   let toId = null; // We'll need for looking up email address.
   let toEmail = null;
+  let supervisorChange = false; // Flag if a possible supervisor takeover.
+  
   logger.info(`Updating review ${rId}`);
   if (context.email === null) {
     // Probably just a need to refresh the auth token
@@ -32,8 +39,10 @@ const updateReview = (root, args, context) => {
       logger.warn(`Current id doesn't match either review employee id or supervisor id. Supervisor change? User email: ${context.email}`);
       employee = getEmployee(review.employee_id, context.pool, logger);
     }
+
     if (inRev.hasOwnProperty('status')) {
       newStatus = inRev.status;
+
       if (review.status !== newStatus) {
         doSave = true;
         let errorString = null;
@@ -46,6 +55,7 @@ const updateReview = (root, args, context) => {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
           if (context.employee_id !== review.supervisor_id) {
+            supervisorChange = true;
             errorString = 'Only supervisor may modify check-in in Open status';
           }
         } else if (status === 'Ready') {
@@ -60,12 +70,13 @@ const updateReview = (root, args, context) => {
             errorString = `Invalid status transition from ${status} to ${newStatus}`;
           }
           if (context.employee_id !== review.supervisor_id) {
+            supervisorChange = true;
             errorString = 'Only supervisor may modify check-in in Acknowledged status';
           }
         } else if (status === 'Closed') {
           errorString = 'Status transition from Closed status is not allowed';
         }
-        if (errorString !== null) {
+        if (errorString !== null && !supervisorChange) { // Have to wait on supervisor change
           return Promise.resolve({ error: true, errorString });
         }
 
@@ -83,7 +94,7 @@ const updateReview = (root, args, context) => {
         }
 
         status = newStatus;
-        if (errorString !== null) {
+        if (errorString !== null && !supervisorChange) {
           logger.error(`Check-in update error for user ${context.email}: ${errorString}`);
           throw new Error(errorString);
         }
@@ -96,6 +107,7 @@ const updateReview = (root, args, context) => {
       doSave = true;
       periodEnd = inRev.periodEnd;
     }
+
     if (!doSave) return Promise.resolve({ error: false });
 
     return employee.then((employeeInfo) => {
