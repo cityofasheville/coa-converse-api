@@ -21,7 +21,7 @@ const getReviewRecord = (id, context) => {
     return Promise.resolve(review);
   })
   .catch(err => {
-    logger.error(`Error retrieving check-in record ${id}: ${err} for user ${context.user.email}`);
+    logger.error(`Error retrieving check-in record ${id}: ${err} for user ${context.email}`);
     throw new Error(`Error retrieving check-in record: ${err}`);
   });
 };

@@ -4,7 +4,6 @@ const { makeExecutableSchema } = require('graphql-tools');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const Logger = require('coa-node-logging');
-const coaWebLogin = require('coa-web-login');
 require('dotenv').config();
 
 const logFile = process.env.logfile ? process.env.logfile : null;
@@ -15,6 +14,17 @@ const executableSchema = makeExecutableSchema({
   typeDefs,
   resolvers,
 });
+
+// Import Firebase - for now (8/25/16), the use of require and import of individual
+// submodules is needed to avoid problems with webpack (import seems to require
+// beta version of webpack 2).
+logger.info('Initialize firebase');
+const firebase = require('firebase');
+firebase.initializeApp({
+  serviceAccount: './coa-converse-firebase-adminsdk-sd9yz-05a18e6d38.json',
+  databaseURL: 'https://coa-converse.firebaseio.com',
+});
+logger.info('Firebase initialized');
 
 const pg = require('pg');
 pg.defaults.poolSize = 1;
@@ -69,20 +79,15 @@ const baseConfig = {
     pool,
     whPool,
     logger,
-    user: {
-      loggedin: false,
-      token: null,
-      uid: null,
-      name: null,
-      email: null,
-    },
-    employee: {
-      employee_id: 0,
-      department: null,
-      division: null,
-      groups: [],
-    },
+    employee_id: 0,
     superuser: false,
+    loggedin: false,
+    token: null,
+    uid: null,
+    name: null,
+    email: null,
+    groups: [],
+    subscriptions: null,
   },
 };
 logger.info('Initialize graphql server');
@@ -93,26 +98,55 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     return baseConfig;
   }
   logger.info('Attempt login verification');
-  return coaWebLogin(whPool, logger, req)
-  .then(userInfo => {
-    baseConfig.context.user = userInfo.user;
-    baseConfig.context.employee = userInfo.employee;
-    logger.info(`Employee id for login ${baseConfig.context.user.email} is ${baseConfig.context.employee.employee_id}`);
-    return pool.request()
-    .query(`SELECT TOP(1) * FROM dbo.SuperUsers WHERE EmpID = ${baseConfig.context.employee.employee_id}`)
-    .then(res2 => {
-      let superuser = false;
-      if (res2.recordset.length === 1) {
-        superuser = res2.recordset[0].IsSuperUser !== 0;
+  return firebase.auth().verifyIdToken(req.headers.authorization)
+  .then(decodedToken => {
+    const decodedEmail = decodedToken.email.toLowerCase();
+    logger.info(`Logging in ${decodedEmail} - look up employee ID`);
+    // Now we need to look up the employee ID
+    const query = 'select emp_id from amd.ad_info where email_city = ' +
+                  `'${decodedEmail}'`;
+    return whPool.query(query)
+    .then(res1 => {
+      if (res1.rows.length > 0) {
+        return Promise.resolve(res1.rows[0].emp_id);
       }
-      baseConfig.context.superuser = superuser;
-      if (superuser) logger.warn(`Superuser login by ${baseConfig.context.user.email}'`);
-      return baseConfig;
+      logger.error(`Unable to match employee by email ${decodedEmail}`);
+      throw new Error('Unable to find employee by email.');
     })
-    .catch(error => {
-      logger.error(error);
-      return baseConfig;
+    .then(employeeId => {
+      logger.info(`Employee id for login ${decodedToken.email} is ${employeeId}`);
+      return pool.request()
+      .query(`SELECT TOP(1) * FROM dbo.SuperUsers WHERE EmpID = ${employeeId}`)
+      .then(res2 => {
+        let superuser = false;
+        if (res2.recordset.length === 1) {
+          superuser = res2.recordset[0].IsSuperUser !== 0;
+        }
+        if (superuser) logger.warn(`Superuser login by ${decodedToken.email}'`);
+        return {
+          schema: executableSchema,
+          context: {
+            pool,
+            whPool,
+            logger,
+            employee_id: employeeId,
+//            employee_id: 1316,
+            superuser,
+            loggedin: true,
+            token: req.headers.authorization,
+            uid: decodedToken.uid,
+            name: decodedToken.name,
+            email: decodedToken.email,
+          },
+        };
+      });
     });
+  })
+  .catch((error) => {
+    if (req.headers.authorization !== 'null') {
+      logger.error(`Error decoding authentication token: ${error}`);
+    }
+    return baseConfig;
   });
 }));
 
