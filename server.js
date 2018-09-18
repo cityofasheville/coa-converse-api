@@ -103,18 +103,18 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     const decodedEmail = decodedToken.email.toLowerCase();
     logger.info(`Logging in ${decodedEmail} - look up employee ID`);
     // Now we need to look up the employee ID
-    const query = 'select emp_id from amd.ad_info where email_city = ' +
-                  `'${decodedEmail}'`;
-    return whPool.query(query)
+    const query = 'select emp_id from amd.ad_info where email_city = $1';
+    return whPool.query(query, [decodedEmail])
     .then(res1 => {
       if (res1.rows.length > 0) {
+        console.log('here1');
         return Promise.resolve(res1.rows[0].emp_id);
       }
       logger.error(`Unable to match employee by email ${decodedEmail}`);
       throw new Error('Unable to find employee by email.');
     })
     .then(employeeId => {
-      logger.info(`Employee id for login ${decodedToken.email} is ${employeeId}`);
+      logger.info(`Employee id for login ${decodedEmail} is ${employeeId}`);
       return pool.request()
       .query(`SELECT TOP(1) * FROM dbo.SuperUsers WHERE EmpID = ${employeeId}`)
       .then(res2 => {
