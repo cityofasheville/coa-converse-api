@@ -20,10 +20,16 @@ const employee = (obj, args, context) => {
   throw new Error('In employee query - employee_id not set');
 };
 
+const reviewableTypes = ['CA', 'FT', 'IN', 'PB', 'PN'];
 const isReviewable = (e) => {
+  // return (
+  //   e.Active === 'A' && e.Position !== null && e.Position !== '' &&
+  //   e.Emp_Email !== null && e.Emp_Email !== ''
+  // );
   return (
-    e.Active === 'A' && e.Position !== null && e.Position !== '' &&
-    e.Emp_Email !== null && e.Emp_Email !== ''
+    e.Active === 'A' &&
+    e.Emp_Email !== null && e.Emp_Email !== '' &&
+    reviewableTypes.includes(e.FT_Status)
   );
 };
 
@@ -31,6 +37,7 @@ const notReviewableReason = (e) => {
   let reason = null;
   if (!isReviewable(e)) {
     if (e.Active !== 'A') reason = 'Inactive';
+    else if (!reviewableTypes.includes(e.FT_Status)) reason = 'Non-included employee type';
     else if (e.Position === null || e.Position === '') reason = 'No position';
     else reason = 'Employee not registered for Employee Check-in';
   }
@@ -55,6 +62,7 @@ const employees = (obj, args, context) => {
           const emp = {
             id: e.EmpID,
             active: e.Active,
+            ft_status: e.FT_Status,
             name: e.Employee,
             email: e.Emp_Email,
             position: e.Position,
