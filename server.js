@@ -103,7 +103,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     const decodedEmail = decodedToken.email.toLowerCase();
     logger.info(`Logging in ${decodedEmail} - look up employee ID`);
     // Now we need to look up the employee ID
-    const query = 'select emp_id from amd.ad_info where email_city = $1';
+    const query = 'select emp_id from internal.ad_info where email_city = $1';
     return whPool.query(query, [decodedEmail])
     .then(res1 => {
       if (res1.rows.length > 0) {
