@@ -43,30 +43,40 @@ logger.info('Connect to database');
 
 const whPool = new PgPool(whConfig);
 
-const sql = require('mssql');
-const msconfig = {
+// const sql = require('mssql');
+// const msconfig = {
+//   user: process.env.dbuser,
+//   password: process.env.dbpassword,
+//   server: process.env.dbhost,
+//   database: process.env.database,
+//   pool: {
+//     max: 10,
+//     min: 0,
+//     idleTimeoutMillis: 30000,
+//   },
+// };
+
+const chConfig = {
+  host: process.env.dbhost,
   user: process.env.dbuser,
   password: process.env.dbpassword,
-  server: process.env.dbhost,
   database: process.env.database,
-  pool: {
-    max: 10,
-    min: 0,
-    idleTimeoutMillis: 30000,
-  },
+  port: 5432,
+  ssl: false,
 };
-
 logger.info('Connect to database');
-const pool = new sql.ConnectionPool(msconfig);
-pool.on('error', err => {
-  throw new Error(`Error on database connection pool: ${err}`);
-});
+const pool = new PgPool(chConfig);
 
-pool.connect(err => {
-  if (err) {
-    throw new Error(`Error trying to create a connection pool ${err}`);
-  }
-});
+// const pool = new sql.ConnectionPool(msconfig);
+// pool.on('error', err => {
+//   throw new Error(`Error on database connection pool: ${err}`);
+// });
+
+// pool.connect(err => {
+//   if (err) {
+//     throw new Error(`Error trying to create a connection pool ${err}`);
+//   }
+// });
 
 logger.info('Database connection initialized');
 
@@ -115,12 +125,12 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     })
     .then(employeeId => {
       logger.info(`Employee id for login ${decodedEmail} is ${employeeId}`);
-      return pool.request()
-      .query(`SELECT TOP(1) * FROM dbo.SuperUsers WHERE EmpID = ${employeeId}`)
+      return pool
+      .query(`SELECT * FROM reviews.superusers WHERE emp_id = ${employeeId}`)
       .then(res2 => {
         let superuser = false;
-        if (res2.recordset.length === 1) {
-          superuser = res2.recordset[0].IsSuperUser !== 0;
+        if (res2.rows.length === 1) {
+          superuser = res2.rows[0].is_superuser;
         }
         if (superuser) logger.warn(`Superuser login by ${decodedToken.email}'`);
         return {

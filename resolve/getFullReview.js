@@ -1,28 +1,81 @@
-const sql = require('mssql');
 const loadReview = require('./loadReview');
 
-const getFullReview = (reviewId, pool, logger) => {
-  let review = {
-    status: null,
-  };
-  return pool.request()
-  .input('ReviewID', sql.Int, reviewId)
-  .execute('avp_get_review')
-  .then((result) => {
-    result.recordset.forEach(r => {
-      review = loadReview(r, review);
-    });
-    // Now we have the review, get last review date.
-    const query = 'SELECT MAX(Period_End) as previousReviewDate '
-    + `FROM Reviews WHERE EmpID = ${review.employee_id} `
-    + `AND Period_End < '${review.periodEnd}'`;
-    return pool.request().query(query)
-    .then(dmax => {
-      if (dmax.recordset.length > 0) {
-        review.previousReviewDate = new Date(dmax.recordset[0].previousReviewDate).toISOString();
-        // review.previousReviewDate = dmax.recordset[0].previousReviewDate;
+const getFullReview = (reviewId, context) => {
+  const pool = context.pool;
+  const whPool = context.whPool;
+  const cQuery = 'SELECT * FROM reviews.reviews WHERE review_id = $1 ';
+  console.log(`getFullReview ${reviewId}`);
+  return pool.query(cQuery, [reviewId])
+  .then(res => {
+    const r = res.rows[0];
+    const lastRevQuery = `
+    SELECT MAX(period_end) AS previous_date
+      FROM reviews.reviews
+      WHERE employee_id = ${r.employee_id} AND period_end < '${r.period_end.toISOString()}'
+    `;
+    return pool.query(lastRevQuery)
+    .then((lRes) => {
+      let previousReviewDate = null;
+      if (lRes.rows[0].previous_date !== null) {
+        previousReviewDate = lRes.rows[0].previous_date.toISOString();
       }
-      return review;
+      const review = {
+        id: r.review_id,
+        status: r.status,
+        status_date: r.status_date,
+        employee_id: r.employee_id,
+        supervisor_id: r.supervisor_id,
+        position: r.position,
+        periodStart: null, // Currently not in use
+        periodEnd: r.period_end.toISOString(),
+        previousReviewDate,
+        employee_name: null,
+        employee_email: null,
+        reviewer_name: null,
+        reviewer_email: null,
+        questions: [],
+        responses: [],
+      };
+      const eQuery = 'select emp_id, employee, emp_email from internal.pr_employee_info where emp_id = ANY($1)';
+      return whPool.query(eQuery, [[review.employee_id, review.supervisor_id]])
+      .then((eList) => {
+        eList.rows.forEach((itm) => {
+          if (itm.emp_id === review.employee_id) {
+            review.employee_name = itm.employee;
+            review.employee_email = itm.emp_email;
+          } else if (itm.emp_id === review.supervisor_id) {
+            review.reviewer_name = itm.employee;
+            review.reviewer_email = itm.emp_email;
+          }
+        });
+        const qQuery = `SELECT
+            Q.question_id, Q.qt_type, q.qt_question, Q.answer, Q.required,
+            R.response
+          FROM reviews.questions AS Q LEFT OUTER JOIN
+          reviews.responses AS R ON R.question_id = Q.question_id
+          WHERE Q.review_id = ${review.id}
+          ORDER BY Q.qt_order ASC
+        `;
+        return pool.query(qQuery)
+        .then((qres) => {
+          qres.rows.forEach((qr) => {
+            review.questions.push({
+              id: qr.question_id,
+              type: qr.qt_type,
+              question: qr.qt_question,
+              answer: qr.answer,
+              require: qr.required,
+            });
+            review.responses.push({
+              question_id: qr.question_id,
+              review_id: review.id,
+              Response: qr.response,
+            });
+          });
+          console.log(JSON.stringify(review));
+          return Promise.resolve(review);
+        });
+      });
     });
   })
   .catch(err => {

@@ -255,6 +255,8 @@ const updateReview = (root, args, context) => {
         throw new Error(`Unknown status transition ${transition} for notification.`);
     }
 
+    // https://medium.com/@yashoda.charith10/sending-emails-using-aws-ses-nodejs-460b8cc6d0d5
+
     const doNotify = context.pool.request()
     .input('ToAddress', sql.NVarChar, toAddress)
     .input('FromAddress', sql.NVarChar, fromAddress)

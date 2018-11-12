@@ -5,13 +5,14 @@ const createCurrentReview = require('./createCurrentReview');
 const operationIsAllowed = require('./operationIsAllowed');
 
 const review = (obj, args, context) => {
+  console.log('In review');
   const pool = context.pool;
   const logger = context.logger;
   const id = args.id;
 
   logger.info(`Getting employee check-in ${id}`);
   if (args.hasOwnProperty('id') && id !== -1) {
-    return getFullReview(id, pool, logger)
+    return getFullReview(id, context)
     .then(reviewOut => {
       if (context.employee_id === reviewOut.employee_id) {
         return reviewOut;
@@ -59,10 +60,10 @@ const review = (obj, args, context) => {
 };
 
 const reviews = (obj, args, context) => {
+  console.log('In reviews');
   const pool = context.pool;
   const logger = context.logger;
   const id = obj.id;
-  const revs = [];
   let verifyAllowed = Promise.resolve(true);
   if (id !== context.employee_id) {
     verifyAllowed = operationIsAllowed(id, context);
@@ -70,28 +71,36 @@ const reviews = (obj, args, context) => {
   return verifyAllowed
   .then(isAllowed => {
     if (isAllowed) {
-      return pool.request()
-        .input('UserEmpID', sql.Int, id)
-        .execute('avp_Reviews_of_Me')
+      return pool.query('SELECT * from reviews.reviews where employee_id = $1', [id])
         .then(result => {
-          result.recordset.forEach(r => {
-            const rev = {
-              id: r.R_ID,
-              status: r.Status,
-              status_date: new Date(r.Status_Date).toISOString(),
-              supervisor_id: r.SupID,
-              employee_id: r.EmpID,
-              position: r.Position,
-              periodStart: null, // Currently not in use
-              periodEnd: new Date(r.Period_End).toISOString(),
-              reviewer_name: r.Reviewer,
-              employee_name: r.Employee,
-              questions: null,
-              responses: null,
-            };
-            revs.push(rev);
+          const revs = result.rows;
+          const eMap = {};
+          eMap[id] = {};
+          revs.forEach(r => { eMap[r.supervisor_id] = {}; });
+          const query = 'select emp_id, employee from internal.pr_employee_info where emp_id = ANY($1)';
+          return context.whPool.query(query, [Object.keys(eMap)])
+          .then(employees => {
+            employees.rows.forEach(e => { eMap[e.emp_id] = e; });
+            return revs.map(r => {
+              const e = eMap[id];
+              const s = eMap[r.supervisor_id];
+              const rev = {
+                id: r.review_id,
+                status: r.status,
+                status_date: new Date(r.status_date).toISOString(),
+                supervisor_id: r.supervisor_id,
+                employee_id: r.employee_id,
+                position: r.position,
+                periodStart: null, // Currently not in use
+                periodEnd: new Date(r.period_end).toISOString(),
+                reviewer_name: s.employee,
+                employee_name: e.employee,
+                questions: null,
+                responses: null,
+              };
+              return rev;
+            });
           });
-          return revs;
         });
     }
     logger.error(`Check-ins query not allowed for user ${context.email}`);
