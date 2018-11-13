@@ -11,7 +11,7 @@ const createCurrentReview = (emp, context) => {
       (template_id, template_name, template_desc, status, status_date, supervisor_id, 
       employee_id, division_id, position, period_start, period_end)
     SELECT template_id, name, description, 'Open', '${t1s}', ${emp.supervisor_id}, ${emp.id},
-           '${emp.division_id}', '${emp.position}', null, '${t1s}'
+           '${emp.division_id}', '${emp.position}', '${t1s}', '${t1s}'
     FROM reviews.review_templates WHERE template_id = ${templateId};
     SELECT currval('reviews.reviews_id_seq') AS review_id;
   `;

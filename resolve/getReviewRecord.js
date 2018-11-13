@@ -9,7 +9,7 @@ const getReviewRecord = (id, context) => {
       id: r.review_id,
       status: r.status,
       status_date: new Date(r.status_date).toISOString(),
-      periodStart: null, // Currently not in use.
+      periodStart: new Date(r.period_start).toISOString(),
       periodEnd: new Date(r.period_end).toISOString(),
       reviewer_name: null,
       employee_name: null,

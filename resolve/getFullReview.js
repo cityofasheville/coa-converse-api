@@ -25,7 +25,7 @@ const getFullReview = (reviewId, context) => {
         employee_id: r.employee_id,
         supervisor_id: r.supervisor_id,
         position: r.position,
-        periodStart: null, // Currently not in use
+        periodStart: r.period_start.toISOString(),
         periodEnd: r.period_end.toISOString(),
         previousReviewDate,
         employee_name: null,

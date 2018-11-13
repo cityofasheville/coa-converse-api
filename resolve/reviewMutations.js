@@ -1,4 +1,3 @@
-const sql = require('mssql');
 const getReviewRecord = require('./getReviewRecord');
 const getFullReview = require('./getFullReview');
 const getEmployee = require('./getEmployee');
@@ -11,6 +10,8 @@ const notify = require('./notify');
 */
 const updateReview = (root, args, context) => {
   const logger = context.logger;
+  const t1 = new Date();
+  const currentDate = `${t1.getFullYear()}-${t1.getMonth() + 1}-${t1.getDate()}`;
   const rId = args.id;
   const inRev = args.review;
   let seq = Promise.resolve({ error: false });
@@ -33,7 +34,8 @@ const updateReview = (root, args, context) => {
     let employee = Promise.resolve({ id: null });
     // Verify we have a valid user and status transition
     let status = review.status;
-    let periodEnd = review.periodEnd;
+    let periodEnd = currentDate;
+    const periodStart = review.periodStart;
     let doSave = false;
     if (context.employee_id !== review.employee_id &&
         context.employee_id !== review.supervisor_id) {
@@ -116,7 +118,7 @@ const updateReview = (root, args, context) => {
       const parameters = [
         rId,
         status,
-        null, // periodStart
+        periodStart,
         periodEnd,
         supervisorId,
       ];
