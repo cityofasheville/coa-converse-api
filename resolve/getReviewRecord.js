@@ -1,22 +1,20 @@
-const sql = require('mssql');
 
 const getReviewRecord = (id, context) => {
   const logger = context.logger;
-  return context.pool.request()
-  .input('rid', sql.Int, id)
-  .query('SELECT * from Reviews WHERE R_ID = @rid')
+  return context.pool
+  .query('SELECT * from reviews.reviews WHERE review_id = $1', [id])
   .then(revResult => {
-    const r = revResult.recordset[0];
+    const r = revResult.rows[0];
     const review = {
-      id: r.R_ID,
-      status: r.Status,
-      status_date: new Date(r.Status_Date).toISOString(),
+      id: r.review_id,
+      status: r.status,
+      status_date: new Date(r.status_date).toISOString(),
       periodStart: null, // Currently not in use.
-      periodEnd: new Date(r.Period_End).toISOString(),
-      reviewer_name: r.Reviewer, // Not really there
-      employee_name: r.Employee, // Not really there
-      employee_id: r.EmpID,
-      supervisor_id: r.SupID,
+      periodEnd: new Date(r.period_end).toISOString(),
+      reviewer_name: null,
+      employee_name: null,
+      employee_id: r.employee_id,
+      supervisor_id: r.supervisor_id,
     };
     return Promise.resolve(review);
   })

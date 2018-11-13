@@ -1,10 +1,9 @@
-const loadReview = require('./loadReview');
 
 const getFullReview = (reviewId, context) => {
   const pool = context.pool;
   const whPool = context.whPool;
   const cQuery = 'SELECT * FROM reviews.reviews WHERE review_id = $1 ';
-  console.log(`getFullReview ${reviewId}`);
+  console.log(`getFullReview ${reviewId} with type ${typeof pool.query}`);
   return pool.query(cQuery, [reviewId])
   .then(res => {
     const r = res.rows[0];

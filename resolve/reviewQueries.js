@@ -41,13 +41,14 @@ const review = (obj, args, context) => {
 
   return verifyAllowed.then(isAllowed => {
     if (isAllowed) {
-      return getEmployee(employeeId, pool)
+      return getEmployee(employeeId, pool, context.whPool, context.logger)
         .then(emp => {
+          console.log('Here with emp: ' + JSON.stringify(emp));
           const currentReview = emp.current_review;
           if (currentReview === null || currentReview === 0) {
-            return createCurrentReview(emp, pool, logger);
+            return createCurrentReview(emp, context);
           }
-          return getFullReview(currentReview, pool, logger)
+          return getFullReview(currentReview, context)
           .catch(err => {
             logger.error(`Error retrieving check-in for ${context.email}: ${err}`);
             throw new Error(err);

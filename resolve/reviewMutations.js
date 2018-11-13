@@ -29,6 +29,7 @@ const updateReview = (root, args, context) => {
   }
   seq = getReviewRecord(rId, context) // Load information from Reviews table
   .then(review => {
+    console.log(`Review record: ${JSON.stringify(review)}`);
     let employee = Promise.resolve({ id: null });
     // Verify we have a valid user and status transition
     let status = review.status;
@@ -109,11 +110,18 @@ const updateReview = (root, args, context) => {
     }
 
     if (!doSave) return Promise.resolve({ error: false });
-
+    console.log('Moving on ...');
     return employee.then((employeeInfo) => {
       let supervisorId = review.supervisor_id;
-      const updQuery = 'UPDATE Reviews SET Status = @status, Period_Start = @start, ' +
-      'Period_End = @end, SupID = @supervisor_id WHERE R_ID = @rid';
+      const parameters = [
+        rId,
+        status,
+        null, // periodStart
+        periodEnd,
+        supervisorId,
+      ];
+      const updQuery = 'UPDATE reviews.reviews SET status = $2, period_start = $3, ' +
+      'period_end = $4, supervisor_id = $5 WHERE review_id = $1';
       if (employeeInfo.id !== null) { // Supervisor has changed or we have unauthorized save
         if (context.employee_id === employeeInfo.supervisor_id) {
           // Reset the supervisor in the review, there has been a change.
@@ -124,41 +132,34 @@ const updateReview = (root, args, context) => {
           throw new Error('Only the supervisor or employee can modify a check-in');
         }
       }
-      return context.pool.request()
-      .input('rid', sql.Int, rId)
-      .input('status', sql.NVarChar, status)
-      .input('start', sql.Date, null) // Currently not in use
-      .input('end', sql.Date, periodEnd)
-      .input('supervisor_id', sql.Int, supervisorId)
-      .query(updQuery);
+      return context.pool
+      .query(updQuery, parameters);
     });
   })
   .then(revRes => {
-    if (revRes.error) return Promise.resolve(revRes);
-    if (revRes.rowsAffected === null || revRes.rowsAffected[0] !== 1) {
-      return Promise.resolve({ error: true, errorString: 'Error updating period' });
-    }
+    console.log('Did the review update! ' + JSON.stringify(revRes));
+    // if (revRes.error) return Promise.resolve(revRes);
+    // if (revRes.rowsAffected === null || revRes.rowsAffected[0] !== 1) {
+    //   return Promise.resolve({ error: true, errorString: 'Error updating period' });
+    // }
     return Promise.resolve({ error: false });
   })
   .catch(revErr => {
-    logger.error(`Error updating check-in by ${context.email}: ${revErr}`);
-    throw new Error(`Error updating check-in: ${revErr}`);
+    logger.error(`1Error updating check-in by ${context.email}: ${revErr}`);
+    throw new Error(`1Error updating check-in: ${revErr}`);
   });
-
   // Done with Review table, deal with the questions, responses, notifications.
   return seq.then(res1 => {
     if (!res1.error && inRev.questions !== null && inRev.questions.length > 0) {
       const updateQuestions = inRev.questions.map(q => {
         const qId = q.id;
         const answer = (q.answer !== null) ? q.answer : '';
-        return context.pool.request()
-        .input('answer', sql.NVarChar, answer)
-        .input('qid', sql.Int, qId)
-        .query('UPDATE Questions SET Answer = @answer WHERE Q_ID = @qid')
+        return context.pool
+        .query('UPDATE reviews.questions SET answer = $2 WHERE question_id = $1', [qId, answer])
         .then(qRes => {
-          if (qRes.rowsAffected === null || qRes.rowsAffected[0] !== 1) {
-            throw new Error(`Error updating question ${qId}`);
-          }
+          // if (qRes.rowsAffected === null || qRes.rowsAffected[0] !== 1) {
+          //   throw new Error(`Error updating question ${qId}`);
+          // }
           return Promise.resolve({ error: false });
         });
       });
@@ -167,38 +168,36 @@ const updateReview = (root, args, context) => {
     return Promise.resolve(res1);
   })
   .then(res2 => { // Deal with response
+    console.log('Deal with the response');
     if (!res2.error && inRev.responses !== null && inRev.responses.length > 0) {
       const updateResponses = inRev.responses.map(r => {
         if (r.question_id === null) {
-          return context.pool.request()
-          .input('response', sql.NVarChar, r.Response)
-          .input('rid', sql.Int, rId)
-          .query('UPDATE Responses SET Response = @response WHERE R_ID = @rid');
+          return context.pool
+          .query('UPDATE reviews.responses SET response = $2 WHERE review_id = $1', [rId, r.Response]);
         }
-        return context.pool.request()
-        .input('response', sql.NVarChar, r.Response)
-        .input('rid', sql.Int, rId)
-        .input('qid', sql.Int, r.question_id)
-        .query('UPDATE Responses SET Response = @response WHERE (R_ID = @rid AND Q_ID = @qid)');
+        console.log('Now do the response query');
+        const rQuery = 'UPDATE reviews.responses SET response = $3 WHERE (review_id = $1 AND question_id = $2)';
+        return context.pool.query(rQuery, [rId, r.question_id, r.Response]);
       });
       return Promise.all(updateResponses);
     }
     return Promise.resolve(res2);
   })
   .then(res3 => {
+    console.log('HERE WITH RES3: ' + JSON.stringify(res3));
     // All done - either error or return the updated review
     if (res3.error) {
       return Promise.resolve(res3);
     }
 
-    return getFullReview(args.id, context.pool, logger)
+    return getFullReview(args.id, context, logger)
     .catch(err => {
       throw new Error(`Error doing check-in query: ${err}`);
     });
   })
   .then(revRes2 => {
     if (transition === null) return Promise.resolve(revRes2);
-    const query = 'select email_city from amd.ad_info where emp_id = ' +
+    const query = 'select email_city from internal.ad_info where emp_id = ' +
                   `'${toId}'`;
     return context.whPool.query(query)
     .then(email => {
@@ -210,6 +209,7 @@ const updateReview = (root, args, context) => {
     });
   })
   .then(res4 => {
+    console.log('RES4');
     if (transition === null || res4.error) {
       return Promise.resolve(res4);
     }
@@ -257,21 +257,23 @@ const updateReview = (root, args, context) => {
 
     // https://medium.com/@yashoda.charith10/sending-emails-using-aws-ses-nodejs-460b8cc6d0d5
 
-    const doNotify = context.pool.request()
-    .input('ToAddress', sql.NVarChar, toAddress)
-    .input('FromAddress', sql.NVarChar, fromAddress)
-    .input('Subject', sql.NVarChar, subject)
-    .input('Body', sql.NVarChar, body)
-    .query('INSERT INTO Notifications '
-      + '(ToAddress, FromAddress, Subject, BodyFormat, Body) '
-      + "VALUES (@ToAddress, @FromAddress, @Subject,'HTML',@Body)");
+    // const doNotify = context.pool.request()
+    // .input('ToAddress', sql.NVarChar, toAddress)
+    // .input('FromAddress', sql.NVarChar, fromAddress)
+    // .input('Subject', sql.NVarChar, subject)
+    // .input('Body', sql.NVarChar, body)
+    // .query('INSERT INTO Notifications '
+    //   + '(ToAddress, FromAddress, Subject, BodyFormat, Body) '
+    //   + "VALUES (@ToAddress, @FromAddress, @Subject,'HTML',@Body)");
 
-    return doNotify.then(res5 => {
-      if (res5.error) {
-        return Promise.resolve(res5);
-      }
-      return Promise.resolve(res4);
-    });
+    // return doNotify.then(res5 => {
+    //   if (res5.error) {
+    //     return Promise.resolve(res5);
+    //   }
+    //   return Promise.resolve(res4);
+    // });
+    console.log('now leave');
+    return Promise.resolve(res4);
   })
   .catch(err => {
     logger.error(`Error updating check-in: ${err}`);

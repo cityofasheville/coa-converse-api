@@ -39,7 +39,9 @@ const getEmployee = (id, pool, whPool, logger) => {
         email: e.emp_email,
         position: e.position,
         department: e.department,
+        department_id: e.dept_id,
         division: e.division,
+        division_id: e.div_id,
         current_review: null, // CurrentReview
         last_reviewed: null, // Last reviewed
         reviewable: isReviewable(e),
