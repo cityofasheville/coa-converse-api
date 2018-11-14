@@ -1,5 +1,25 @@
 
-const getFullReview = (reviewId, context) => {
+const loadBaseReview = (r) => {
+  return {
+    id: r.review_id,
+    status: r.status,
+    status_date: r.status_date,
+    employee_id: r.employee_id,
+    supervisor_id: r.supervisor_id,
+    position: r.position,
+    periodStart: r.period_start === null ? null : r.period_start.toISOString(),
+    periodEnd: r.period_end.toISOString(),
+    previousReviewDate: null,
+    employee_name: null,
+    employee_email: null,
+    reviewer_name: null,
+    reviewer_email: null,
+    questions: [],
+    responses: [],
+  };
+};
+
+const getReview = (reviewId, context) => {
   const pool = context.pool;
   const whPool = context.whPool;
   const cQuery = 'SELECT * FROM reviews.reviews WHERE review_id = $1 ';
@@ -18,23 +38,9 @@ const getFullReview = (reviewId, context) => {
       if (lRes.rows[0].previous_date !== null) {
         previousReviewDate = lRes.rows[0].previous_date.toISOString();
       }
-      const review = {
-        id: r.review_id,
-        status: r.status,
-        status_date: r.status_date,
-        employee_id: r.employee_id,
-        supervisor_id: r.supervisor_id,
-        position: r.position,
-        periodStart: r.period_start === null ? null : r.period_start.toISOString(),
-        periodEnd: r.period_end.toISOString(),
-        previousReviewDate,
-        employee_name: null,
-        employee_email: null,
-        reviewer_name: null,
-        reviewer_email: null,
-        questions: [],
-        responses: [],
-      };
+      const review = loadBaseReview(r);
+      review.previousReviewDate = previousReviewDate;
+
       const eQuery = 'select emp_id, employee, emp_email from internal.pr_employee_info where emp_id = ANY($1)';
       return whPool.query(eQuery, [[review.employee_id, review.supervisor_id]])
       .then((eList) => {
@@ -81,4 +87,29 @@ const getFullReview = (reviewId, context) => {
   });
 };
 
-module.exports = getFullReview;
+const getReviews = (id, context) => {
+  const pool = context.pool;
+  return pool.query('SELECT * from reviews.reviews where employee_id = $1', [id])
+  .then(result => {
+    const revs = result.rows;
+    const eMap = {};
+    eMap[id] = {};
+    revs.forEach(r => { eMap[r.supervisor_id] = {}; });
+    const query = 'select emp_id, employee from internal.pr_employee_info where emp_id = ANY($1)';
+    return context.whPool.query(query, [Object.keys(eMap)])
+    .then(employees => {
+      employees.rows.forEach(e => { eMap[e.emp_id] = e; });
+      return revs.map(r => {
+        const rev = loadBaseReview(r);
+        rev.reviewer_name = eMap[r.supervisor_id].employee;
+        rev.employee_name = eMap[id].employee;
+        return rev;
+      });
+    });
+  });
+};
+
+module.exports = {
+  getReview,
+  getReviews,
+};
