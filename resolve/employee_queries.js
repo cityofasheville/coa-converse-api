@@ -1,14 +1,16 @@
-const getEmployee = require('./getEmployee.js');
-const operationIsAllowed = require('./operationIsAllowed');
+const getEmployee = require('./utilities/get_employee_info.js');
+const operationIsAllowed = require('./utilities/operation_is_allowed');
+const { isReviewable, notReviewableReason } = require('./utilities/reviewable');
 
+/* *******************
+ * 'employee resolver
+ * *******************/
 const employee = (obj, args, context) => {
   const pool = context.pool;
-  if (args.hasOwnProperty('id')) {
+  if (Object.prototype.hasOwnProperty.call(args, 'id')) {
     return operationIsAllowed(args.id, context)
     .then(isAllowed => {
-      if (isAllowed) {
-        return getEmployee(args.id, pool, context.whPool, context.logger);
-      }
+      if (isAllowed) return getEmployee(args.id, pool, context.whPool, context.logger);
       throw new Error('Employee query not allowed');
     });
   } else if (context.email !== null) {
@@ -17,26 +19,6 @@ const employee = (obj, args, context) => {
     }
   }
   throw new Error('In employee query - employee_id not set');
-};
-
-const reviewableTypes = ['CA', 'FT', 'IN', 'PB', 'PN'];
-const isReviewable = (e) => {
-  return (
-    e.active === 'A' &&
-    e.emp_email !== null && e.emp_email !== '' &&
-    reviewableTypes.includes(e.ft_status)
-  );
-};
-
-const notReviewableReason = (e) => {
-  let reason = null;
-  if (!isReviewable(e)) {
-    if (e.Active !== 'A') reason = 'Inactive';
-    else if (!reviewableTypes.includes(e.FT_Status)) reason = 'Non-included employee type';
-    else if (e.Position === null || e.Position === '') reason = 'No position';
-    else reason = 'Employee not registered for Employee Check-in';
-  }
-  return reason;
 };
 
 const employees = (obj, args, context) => {
@@ -49,9 +31,6 @@ const employees = (obj, args, context) => {
   .then(isAllowed => {
     if (isAllowed) {
       const eIds = [];
-      // return pool.request()
-      // .input('UserEmpID', sql.Int, id)
-      // .execute('avp_Get_My_Employees')
       return whPool.query('select * from internal.employees_main_view where sup_id = $1', [id])
       .then(result => {
         result.rows.filter(e => {

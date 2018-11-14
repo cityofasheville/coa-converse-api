@@ -39,24 +39,11 @@ const whConfig = {
   ssl: false,
 };
 
-logger.info('Connect to database');
+logger.info('Connect to mdastore1');
 
 const whPool = new PgPool(whConfig);
 
-// const sql = require('mssql');
-// const msconfig = {
-//   user: process.env.dbuser,
-//   password: process.env.dbpassword,
-//   server: process.env.dbhost,
-//   database: process.env.database,
-//   pool: {
-//     max: 10,
-//     min: 0,
-//     idleTimeoutMillis: 30000,
-//   },
-// };
-
-const chConfig = {
+const reviewsConfig = {
   host: process.env.dbhost,
   user: process.env.dbuser,
   password: process.env.dbpassword,
@@ -64,10 +51,10 @@ const chConfig = {
   port: 5432,
   ssl: false,
 };
-logger.info('Connect to database');
-const pool = new PgPool(chConfig);
+logger.info('Connect to reviews database');
+const pool = new PgPool(reviewsConfig);
 
-logger.info('Database connection initialized');
+logger.info('Database connections initialized');
 
 const GRAPHQL_PORT = process.env.PORT || 8080;
 
@@ -105,14 +92,11 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
     const query = 'select emp_id from internal.ad_info where email_city = $1';
     return whPool.query(query, [decodedEmail])
     .then(res1 => {
-      if (res1.rows.length > 0) {
-        console.log('here1');
-        return Promise.resolve(res1.rows[0].emp_id);
+      if (res1.rows.length !== 1) {
+        logger.error(`Unable to match employee by email ${decodedEmail}`);
+        throw new Error('Unable to find employee by email.');
       }
-      logger.error(`Unable to match employee by email ${decodedEmail}`);
-      throw new Error('Unable to find employee by email.');
-    })
-    .then(employeeId => {
+      const employeeId = res1.rows[0].emp_id;
       logger.info(`Employee id for login ${decodedEmail} is ${employeeId}`);
       return pool
       .query(`SELECT * FROM reviews.superusers WHERE emp_id = ${employeeId}`)

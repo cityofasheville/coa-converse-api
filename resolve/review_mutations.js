@@ -1,6 +1,6 @@
-const getFullReview = require('./getFullReview');
-const getEmployee = require('./getEmployee');
-const notify = require('./notify');
+const getFullReview = require('./utilities/get_review');
+const getEmployee = require('./utilities/get_employee_info');
+const notify = require('./utilities/notify');
 
 const validateStatusTransition = (review, updatedReview, trueSupervisorId, context) => {
   const r = {

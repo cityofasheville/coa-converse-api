@@ -1,26 +1,4 @@
-const reviewableTypes = ['CA', 'FT', 'IN', 'PB', 'PN'];
-const isReviewable = (e) => {
-  // return (
-  //   e.Active === 'A' && e.Position !== null && e.Position !== '' &&
-  //   e.Emp_Email !== null && e.Emp_Email !== ''
-  // );
-  return (
-    e.active === 'A' &&
-    e.emp_email !== null && e.emp_email !== '' &&
-    reviewableTypes.includes(e.ft_status)
-  );
-};
-
-const notReviewableReason = (e) => {
-  let reason = null;
-  if (!isReviewable(e)) {
-    if (e.active !== 'A') reason = 'Inactive';
-    else if (!reviewableTypes.includes(e.ft_status)) reason = 'Non-included employee type';
-    else if (e.position === null || e.position === '') reason = 'No position';
-    else reason = 'Employee not registered for Employee Check-in';
-  }
-  return reason;
-};
+const { isReviewable, notReviewableReason } = require('./reviewable');
 
 const getEmployee = (id, pool, whPool, logger) => {
   console.log('I am in getEmployee');

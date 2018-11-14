@@ -1,6 +1,6 @@
-const { updateReview } = require('./resolve/reviewMutations');
-const { employee, employees } = require('./resolve/employeeQueries');
-const { review, reviews, questions, responses } = require('./resolve/reviewQueries');
+const { updateReview } = require('./resolve/review_mutations');
+const { employee, employees } = require('./resolve/employee_queries');
+const { review, reviews, questions, responses } = require('./resolve/review_queries');
 
 const resolverMap = {
   Mutation: {

@@ -1,8 +1,7 @@
-const sql = require('mssql');
-const getFullReview = require('./getFullReview');
-const getEmployee = require('./getEmployee.js');
-const createCurrentReview = require('./createCurrentReview');
-const operationIsAllowed = require('./operationIsAllowed');
+const getFullReview = require('./utilities/get_review');
+const getEmployee = require('./utilities/get_employee_info.js');
+const createCurrentReview = require('./utilities/create_review');
+const operationIsAllowed = require('./utilities/operation_is_allowed');
 
 const review = (obj, args, context) => {
   console.log('In review');
@@ -107,84 +106,13 @@ const reviews = (obj, args, context) => {
   });
 };
 
-const questions = (obj, args, context) => {
-  if (obj.questions === null) {
-    const pool = context.pool;
-    const logger = context.logger;
-    return pool.request()
-    .input('ReviewID', sql.Int, obj.id)
-    .execute('avp_get_review')
-    .then((result) => {
-      if (result.recordset.length > 0) {
-        let verifyAllowed;
-        const rev = result.recordset[0];
-        if (context.employee_id === rev.employee_id &&
-            context.employee_id === rev.supervisor_id) {
-          verifyAllowed = Promise.resolve(true);
-        } else {
-          verifyAllowed = operationIsAllowed(rev.supervisor_id, context);
-        }
-        return verifyAllowed.then(isAllowed => {
-          if (isAllowed) {
-            const qs = [];
-            result.recordset.forEach(r => {
-              questions.push(
-                {
-                  id: r.Q_ID,
-                  type: r.QT_Type,
-                  question: r.QT_Question,
-                  answer: r.Answer,
-                  required: r.Required,
-                }
-              );
-            });
-            return qs;
-          }
-          logger.error('Access not allowed to questions for this check-in.');
-          throw new Error('Access not allowed to questions for this check-in.');
-        });
-      }
-      logger.error(`Check-in ${obj.id} not found.`);
-      throw new Error(`Check-in ${obj.id} not found.`);
-    });
-  }
+const questions = (obj, args, context) => { // eslint-disable-line no-unused-vars
+  if (obj.questions === null) throw new Error('Recursive checkin questions fetch not implemented');
   return obj.questions;
 };
 
-const responses = (obj, args, context) => {
-  if (obj.responses === null) {
-    const pool = context.pool;
-    const logger = context.logger;
-    return pool.request()
-    .input('ReviewID', sql.Int, obj.id)
-    .execute('avp_get_review')
-    .then((result) => {
-      const rev = result.recordset[0];
-      let verifyAllowed;
-      if (context.employee_id === rev.employee_id &&
-          context.employee_id === rev.supervisor_id) {
-        verifyAllowed = Promise.resolve(true);
-      } else {
-        verifyAllowed = operationIsAllowed(rev.supervisor_id, context);
-      }
-      return verifyAllowed.then(isAllowed => {
-        if (isAllowed) {
-          const rs = [];
-          const r = result.recordset[0];
-          rs.push(
-            {
-              review_id: obj.id,
-              question_id: null,
-              Response: r.Response,
-            }
-          );
-          return rs;
-        }
-        logger.error('Access not allowed to responses for this check-in.');
-        throw new Error('Access not allowed to responses for this check-in.');
-      });
-    });
-  }
+const responses = (obj, args, context) => { // eslint-disable-line no-unused-vars
+  if (obj.responses === null) throw new Error('Recursive review responses fetch not implemented');
   return obj.responses;
 };
 

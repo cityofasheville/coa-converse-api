@@ -1,4 +1,4 @@
-const getFullReview = require('./getFullReview');
+const getFullReview = require('./get_review');
 
 const createCurrentReview = (emp, context) => {
   const conn = context.pool;
