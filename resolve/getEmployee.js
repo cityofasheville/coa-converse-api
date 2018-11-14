@@ -24,9 +24,6 @@ const notReviewableReason = (e) => {
 
 const getEmployee = (id, pool, whPool, logger) => {
   console.log('I am in getEmployee');
-  // return pool.request()
-  //   .input('UserEmpID', sql.Int, id)
-  //   .execute('avp_Get_Employee')
   return whPool.query('select * from internal.employees_main_view where emp_id = $1', [id])
     .then(result => {
       const e = result.rows[0];

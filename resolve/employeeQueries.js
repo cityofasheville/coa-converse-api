@@ -21,10 +21,6 @@ const employee = (obj, args, context) => {
 
 const reviewableTypes = ['CA', 'FT', 'IN', 'PB', 'PN'];
 const isReviewable = (e) => {
-  // return (
-  //   e.Active === 'A' && e.Position !== null && e.Position !== '' &&
-  //   e.Emp_Email !== null && e.Emp_Email !== ''
-  // );
   return (
     e.active === 'A' &&
     e.emp_email !== null && e.emp_email !== '' &&

@@ -10,7 +10,6 @@ const review = (obj, args, context) => {
   const logger = context.logger;
   const id = args.id;
 
-  logger.info(`Getting employee check-in ${id}`);
   if (args.hasOwnProperty('id') && id !== -1) {
     return getFullReview(id, context)
     .then(reviewOut => {
@@ -43,7 +42,6 @@ const review = (obj, args, context) => {
     if (isAllowed) {
       return getEmployee(employeeId, pool, context.whPool, context.logger)
         .then(emp => {
-          console.log('Here with emp: ' + JSON.stringify(emp));
           const currentReview = emp.current_review;
           if (currentReview === null || currentReview === 0) {
             return createCurrentReview(emp, context);

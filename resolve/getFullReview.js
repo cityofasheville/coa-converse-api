@@ -8,9 +8,9 @@ const getFullReview = (reviewId, context) => {
   .then(res => {
     const r = res.rows[0];
     const lastRevQuery = `
-    SELECT MAX(period_end) AS previous_date
-      FROM reviews.reviews
-      WHERE employee_id = ${r.employee_id} AND period_end < '${r.period_end.toISOString()}'
+      SELECT MAX(period_end) AS previous_date
+        FROM reviews.reviews
+        WHERE employee_id = ${r.employee_id} AND period_end < '${r.period_end.toISOString()}'
     `;
     return pool.query(lastRevQuery)
     .then((lRes) => {
@@ -25,7 +25,7 @@ const getFullReview = (reviewId, context) => {
         employee_id: r.employee_id,
         supervisor_id: r.supervisor_id,
         position: r.position,
-        periodStart: r.period_start.toISOString(),
+        periodStart: r.period_start === null ? null : r.period_start.toISOString(),
         periodEnd: r.period_end.toISOString(),
         previousReviewDate,
         employee_name: null,
@@ -71,7 +71,6 @@ const getFullReview = (reviewId, context) => {
               Response: qr.response,
             });
           });
-          console.log(JSON.stringify(review));
           return Promise.resolve(review);
         });
       });

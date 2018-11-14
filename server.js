@@ -67,17 +67,6 @@ const chConfig = {
 logger.info('Connect to database');
 const pool = new PgPool(chConfig);
 
-// const pool = new sql.ConnectionPool(msconfig);
-// pool.on('error', err => {
-//   throw new Error(`Error on database connection pool: ${err}`);
-// });
-
-// pool.connect(err => {
-//   if (err) {
-//     throw new Error(`Error trying to create a connection pool ${err}`);
-//   }
-// });
-
 logger.info('Database connection initialized');
 
 const GRAPHQL_PORT = process.env.PORT || 8080;
