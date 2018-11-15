@@ -1,4 +1,5 @@
 /* eslint-disable max-len */
+const AWS = require('aws-sdk');
 
 const texts = {
   ready: {
@@ -72,7 +73,34 @@ const notify = (transition, fromAddress, toAddress) => {
   console.log(`Send email from ${fromAddress} to ${toAddress}`);
   console.log(`Subject: ${subject}`);
   console.log(`Body: ${body}`);
-  return Promise.resolve(null);
+
+  AWS.config.update({
+    accessKeyId: process.env.aws_access_key_id,
+    secretAccessKey: process.env.aws_secret_access_key,
+    region: process.env.aws_region,
+  });
+  const ses = new AWS.SES({ apiVersion: '2010-12-01' });
+
+  const params = {
+    Destination: {
+      ToAddresses: [toAddress],
+    },
+    ConfigurationSetName: 'checkin-emails',
+    Message: {
+      Body: {
+        Html: {
+          Charset: 'UTF-8',
+          Data: body,
+        },
+      },
+      Subject: {
+        Charset: 'UTF-8',
+        Data: subject,
+      },
+    },
+    Source: fromAddress,
+  };
+  return ses.sendEmail(params).promise();
 };
 
 module.exports = notify;

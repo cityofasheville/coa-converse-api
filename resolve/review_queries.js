@@ -1,6 +1,6 @@
 const { getReview, getReviews } = require('./utilities/get_review');
-const getEmployee = require('./utilities/get_employee_info.js');
-const createCurrentReview = require('./utilities/create_review');
+const { getEmployee } = require('./utilities/get_employee_info.js');
+const createReview = require('./utilities/create_review');
 const operationIsAllowed = require('./utilities/operation_is_allowed');
 
 const review = (obj, args, context) => {
@@ -41,7 +41,7 @@ const review = (obj, args, context) => {
         .then(emp => {
           const currentReview = emp.current_review;
           if (currentReview === null || currentReview === 0) {
-            return createCurrentReview(emp, context);
+            return createReview(emp, context);
           }
           return getReview(currentReview, context)
           .catch(err => {

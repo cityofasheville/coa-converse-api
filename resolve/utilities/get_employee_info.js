@@ -9,7 +9,7 @@ const employeesReviewStatusQuery = `
 `;
 
 const loadEmployee = (e) => {
-  return {
+  const employee = {
     id: e.emp_id,
     active: e.active,
     ft_status: e.ft_status,
@@ -17,7 +17,9 @@ const loadEmployee = (e) => {
     email: e.emp_email,
     position: e.position,
     department: e.department,
+    department_id: e.dept_id,
     division: e.division,
+    division_id: e.div_id,
     current_review: null,
     last_reviewed: null,
     reviewable: isReviewable(e),
@@ -29,6 +31,7 @@ const loadEmployee = (e) => {
     employees: null,
     reviews: null,
   };
+  return employee;
 };
 
 const getEmployee = (id, pool, whPool, logger) => {

@@ -1,5 +1,5 @@
-const getFullReview = require('./utilities/get_review');
-const getEmployee = require('./utilities/get_employee_info');
+const { getReview } = require('./utilities/get_review');
+const { getEmployee } = require('./utilities/get_employee_info');
 const notify = require('./utilities/notify');
 
 const validateStatusTransition = (review, updatedReview, trueSupervisorId, context) => {
@@ -173,7 +173,7 @@ const updateReview = (root, args, context) => {
 
     return Promise.all(queries);
   })
-  .then(() => getFullReview(args.id, context, logger))
+  .then(() => getReview(args.id, context, logger))
   .then((updatedReview) => {
     if (transition === null) return Promise.resolve(updatedReview);
     // https://medium.com/@yashoda.charith10/sending-emails-using-aws-ses-nodejs-460b8cc6d0d5

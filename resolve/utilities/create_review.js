@@ -1,10 +1,11 @@
-const getFullReview = require('./get_review');
+const { getReview } = require('./get_review');
 
-const createCurrentReview = (emp, context) => {
+const createReview = (emp, context) => {
   const conn = context.pool;
   const templateId = 3;
   const t1 = new Date();
   const t1s = `${t1.getFullYear()}-${t1.getMonth() + 1}-${t1.getDate()}`;
+  console.log('In create review for employee ' + JSON.stringify(emp));
   const cInsert = `
     INSERT INTO reviews.reviews
       (template_id, template_name, template_desc, status, status_date, supervisor_id, 
@@ -14,7 +15,7 @@ const createCurrentReview = (emp, context) => {
     FROM reviews.review_templates WHERE template_id = ${templateId};
     SELECT currval('reviews.reviews_id_seq') AS review_id;
   `;
-
+  console.log(cInsert);
   return conn.query(cInsert)
     .then((result) => {
       const reviewId = result.rows[0].review_id;
@@ -36,7 +37,7 @@ const createCurrentReview = (emp, context) => {
             WHERE review_id = ${reviewId}
           `;
           return conn.query(rInsert)
-            .then(() => getFullReview(reviewId, context));
+            .then(() => getReview(reviewId, context));
         });
     })
     .catch((error) => {
@@ -45,4 +46,4 @@ const createCurrentReview = (emp, context) => {
     });
 };
 
-module.exports = createCurrentReview;
+module.exports = createReview;
