@@ -43,7 +43,7 @@ const createBody = (bodyParagraphs, link) => {
 const notify = (transition, fromAddress, toAddress) => {
   let subject;
   let body;
-  const link = 'https://check-in.ashevillenc.gov';
+  const link = process.env.application_link;
 
   switch (transition) {
     case 'Ready':

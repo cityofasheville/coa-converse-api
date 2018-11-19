@@ -180,7 +180,7 @@ const updateReview = (root, args, context) => {
 
     // We have a status transition - trigger a notification.
     toEmail = (toId === employeeInfo.id) ? employeeInfo.email : employeeInfo.supervisor_email;
-    return notify(transition, context.email, toEmail)
+    return notify(transition, process.env.notification_email_address, toEmail)
       .then(() => Promise.resolve(updatedReview));
   })
   .catch(err => {
