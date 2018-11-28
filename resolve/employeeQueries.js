@@ -26,11 +26,11 @@ const isReviewable = (e) => {
   //   e.Active === 'A' && e.Position !== null && e.Position !== '' &&
   //   e.Emp_Email !== null && e.Emp_Email !== ''
   // );
-  return (
-    e.Active === 'A' &&
+  const reviewable = e.Active === 'A' &&
     e.Emp_Email !== null && e.Emp_Email !== '' &&
-    reviewableTypes.includes(e.FT_Status)
-  );
+    e.Emp_Email.trim().toLowerCase().endsWith('ashevillenc.gov') &&
+    reviewableTypes.includes(e.FT_Status);
+  return reviewable;
 };
 
 const notReviewableReason = (e) => {
@@ -38,7 +38,8 @@ const notReviewableReason = (e) => {
   if (!isReviewable(e)) {
     if (e.Active !== 'A') reason = 'Inactive';
     else if (!reviewableTypes.includes(e.FT_Status)) reason = 'Non-included employee type';
-    else if (e.Position === null || e.Position === '') reason = 'No position';
+    else if (e.Emp_Email === null || e.Emp_Email === '') reason = 'City of Asheville email required';
+    else if (!e.Emp_Email.trim().toLowerCase().endsWith('ashevillenc.gov')) reason = 'City of Asheville email required';
     else reason = 'Employee not registered for Employee Check-in';
   }
   return reason;
