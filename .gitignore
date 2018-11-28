@@ -1,6 +1,6 @@
 SimpliCityII-*.json
 coa-converse-*.json
-.env
+.env*
 .DS_Store
 
 # Logs
