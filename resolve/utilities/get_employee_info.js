@@ -72,11 +72,13 @@ const getSubordinates = (id, pool, whPool, logger) => {
     });
     return pool.query(employeesReviewStatusQuery, [eIds])
     .then(res => {
-      return res.rows.map(r => {
+      res.rows.forEach(r => {
         const e = employeesById[r.employee_id];
         e.current_review = r.current_review;
         e.last_reviewed = (r.last_reviewed === null) ? null : new Date(r.last_reviewed).toISOString();
-        return e;
+      });
+      return eIds.map(eId => {
+        return employeesById[eId];
       });
     });
   });
