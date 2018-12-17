@@ -70,9 +70,6 @@ const notify = (transition, fromAddress, toAddress) => {
       throw new Error(`Unknown status transition ${transition} for notification.`);
   }
   // https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/ses-examples-sending-email.html
-  console.log(`Send email from ${fromAddress} to ${toAddress}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Body: ${body}`);
 
   AWS.config.update({
     accessKeyId: process.env.aws_access_key_id,

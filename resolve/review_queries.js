@@ -56,7 +56,6 @@ const review = (obj, args, context) => {
 };
 
 const reviews = (obj, args, context) => {
-  console.log('In reviews');
   const logger = context.logger;
   const id = obj.id;
   let verifyAllowed = Promise.resolve(true);

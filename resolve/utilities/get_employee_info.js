@@ -40,6 +40,12 @@ const getEmployee = (id, pool, whPool, logger) => {
       const employee = loadEmployee(result.rows[0]);
       return pool.query(employeesReviewStatusQuery, [[id]])
       .then(res => {
+        if (res.rows.length === 0) {
+          return Object.assign({}, employee, {
+            current_review: null,
+            last_reviewed: null,
+          });
+        }
         const r = res.rows[0];
         return Object.assign({}, employee, {
           current_review: r.current_review,
