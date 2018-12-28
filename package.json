@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "description": "GraphQL server for SimpliCity II",
   "scripts": {
-    "start": "nodemon ./server.js --exec babel-node",
+    "start": "nodemon ./server.js ",
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "eslint ."
   },
