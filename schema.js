@@ -7,7 +7,9 @@ const baseSchema = `
     email: String
     position: String
     department: String
+    department_id: String
     division: String
+    division_id: String
     current_review: Int
     last_reviewed: String
     reviewable: Boolean
