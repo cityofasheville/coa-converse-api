@@ -1,6 +1,6 @@
 {
-  "name": "simplicity-graphql-server",
-  "version": "1.2.0",
+  "name": "coa-converse-api",
+  "version": "2.0.0",
   "description": "GraphQL server for SimpliCity II",
   "scripts": {
     "start": "nodemon ./server.js --exec babel-node",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cityofasheville/simplicity-graphql-server.git"
+    "url": "git+https://github.com/cityofasheville/coa-converse-api.git"
   },
   "keywords": [
     "SimpliCity",
@@ -17,7 +17,7 @@
   ],
   "author": "Eric Jackson <ejackson@ashevillenc.gov>",
   "license": "MIT",
-  "homepage": "https://github.com/cityofasheville/simplicity-graphql-server",
+  "homepage": "https://github.com/cityofasheville/coa-converse-api",
   "dependencies": {
     "apollo-server": "^0.2.0",
     "aws-sdk": "^2.356.0",

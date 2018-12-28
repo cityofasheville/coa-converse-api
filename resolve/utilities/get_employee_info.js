@@ -40,6 +40,12 @@ const getEmployee = (id, pool, whPool, logger) => {
       const employee = loadEmployee(result.rows[0]);
       return pool.query(employeesReviewStatusQuery, [[id]])
       .then(res => {
+        if (res.rows.length === 0) {
+          return Object.assign({}, employee, {
+            current_review: null,
+            last_reviewed: null,
+          });
+        }
         const r = res.rows[0];
         return Object.assign({}, employee, {
           current_review: r.current_review,
@@ -66,11 +72,13 @@ const getSubordinates = (id, pool, whPool, logger) => {
     });
     return pool.query(employeesReviewStatusQuery, [eIds])
     .then(res => {
-      return res.rows.map(r => {
+      res.rows.forEach(r => {
         const e = employeesById[r.employee_id];
         e.current_review = r.current_review;
         e.last_reviewed = (r.last_reviewed === null) ? null : new Date(r.last_reviewed).toISOString();
-        return e;
+      });
+      return eIds.map(eId => {
+        return employeesById[eId];
       });
     });
   });
