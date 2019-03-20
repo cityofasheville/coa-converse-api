@@ -1,6 +1,6 @@
 {
   "name": "coa-converse-api",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "GraphQL server for SimpliCity II",
   "scripts": {
     "start": "nodemon ./server.js ",
