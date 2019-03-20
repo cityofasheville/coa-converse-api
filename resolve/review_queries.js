@@ -7,17 +7,19 @@ const review = (obj, args, context) => {
   const pool = context.pool;
   const logger = context.logger;
   const id = args.id;
-
   // Get based on ID argument
   if (args.hasOwnProperty('id') && id !== -1) {
     return getReview(id, context)
     .then(reviewOut => {
       if (context.employee_id === reviewOut.employee_id) return reviewOut;
-
       return operationIsAllowed(reviewOut.supervisor_id, context)
       .then(isAllowed => {
         if (isAllowed) return reviewOut;
-        throw new Error('Check-in query not allowed');
+        return operationIsAllowed(reviewOut.employee_id, context)
+        .then(isAllowed2 => {
+          if (isAllowed2) return reviewOut;
+          throw new Error('Check-in query not allowed');
+          })
       });
     })
     .catch(err => {
