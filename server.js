@@ -86,18 +86,19 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
   logger.info('Attempt login verification');
   return firebase.auth().verifyIdToken(req.headers.authorization)
   .then(decodedToken => {
-    const decodedEmail = decodedToken.email.toLowerCase();
-    logger.info(`Logging in ${decodedEmail} - look up employee ID`);
+    const lcDecodedEmail = decodedToken.email.toLowerCase();
+    // ToDo: Here is where we should do the identity override for debugging.
+    logger.info(`Logging in ${lcDecodedEmail} - look up employee ID`);
     // Now we need to look up the employee ID
     const query = 'select emp_id from internal.ad_info where email_city = $1';
-    return whPool.query(query, [decodedEmail])
+    return whPool.query(query, [lcDecodedEmail])
     .then(res1 => {
       if (res1.rows.length !== 1) {
-        logger.error(`Unable to match employee by email ${decodedEmail}`);
+        logger.error(`Unable to match employee by email ${lcDecodedEmail}`);
         throw new Error('Unable to find employee by email.');
       }
       const employeeId = res1.rows[0].emp_id;
-      logger.info(`Employee id for login ${decodedEmail} is ${employeeId}`);
+      logger.info(`Employee id for login ${lcDecodedEmail} is ${employeeId}`);
       return pool
       .query(`SELECT * FROM reviews.superusers WHERE emp_id = ${employeeId}`)
       .then(res2 => {
@@ -105,7 +106,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
         if (res2.rows.length === 1) {
           superuser = res2.rows[0].is_superuser;
         }
-        if (superuser) logger.warn(`Superuser login by ${decodedToken.email}'`);
+        if (superuser) logger.warn(`Superuser login by ${lcDecodedEmail}'`);
         return {
           schema: executableSchema,
           context: {
@@ -113,7 +114,7 @@ graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
             whPool,
             logger,
             employee_id: employeeId,
-//            employee_id: 1316,
+            // employee_id: 3667,
             superuser,
             loggedin: true,
             token: req.headers.authorization,
