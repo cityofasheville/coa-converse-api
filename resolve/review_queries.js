@@ -11,16 +11,12 @@ const review = (obj, args, context) => {
   if (args.hasOwnProperty('id') && id !== -1) {
     return getReview(id, context)
     .then(reviewOut => {
-      if (context.employee_id === reviewOut.employee_id) return reviewOut;
-      return operationIsAllowed(reviewOut.supervisor_id, context)
-      .then(isAllowed => {
-        if (isAllowed) return reviewOut;
-        return operationIsAllowed(reviewOut.employee_id, context)
-        .then(isAllowed2 => {
-          if (isAllowed2) return reviewOut;
+      if (context.employee_id === reviewOut.employee_id || context.employee_id === reviewOut.supervisor_id) return reviewOut;
+      return operationIsAllowed(reviewOut.employee_id, context)
+        .then(isAllowed => {
+          if (isAllowed) return reviewOut;
           throw new Error('Check-in query not allowed');
           })
-      });
     })
     .catch(err => {
       logger.error(`Error on check-in query by ${context.email}: ${err}`);
