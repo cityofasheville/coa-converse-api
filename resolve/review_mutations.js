@@ -38,7 +38,7 @@ const validateStatusTransition = (review, updatedReview, trueSupervisorId, conte
         if (newStatus !== 'Open' && newStatus !== 'Closed') {
           r.errorString = `Invalid status transition from ${status} to ${newStatus}`;
         }
-        if (context.employee_id !== review.supervisor_id) {
+        if (context.employee_id !== trueSupervisorId) {
           r.errorString = 'Only supervisor may modify check-in in Acknowledged status';
         }
       } else if (status === 'Closed') {
@@ -102,6 +102,7 @@ const updateReview = (root, args, context) => {
       context.employee_id !== review.supervisor_id) {
       supervisorChangeFlag = true;
     }
+    console.log(supervisorChangeFlag);
     return getEmployee(review.employee_id, pool, context.whPool, logger);
   })
   .then((e) => {
