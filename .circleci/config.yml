@@ -34,7 +34,7 @@ jobs:
                --build-arg notification_email_address=${NOTIFICATION_EMAIL_ADDRESS}?
                --build-arg sns_access_key=${SNS_ACCESS_KEY}/
                --build-arg sns_secret_key=${SNS_SECRET_KEY}/
-               --build-are sns_region=${AWS_DEFAULT_REGION}/
+               --build-arg sns_region=${AWS_DEFAULT_REGION}/
                --build-arg port=8080'
       - aws-ecs/update-service:
           family: 'simplicityapi'
@@ -73,7 +73,7 @@ jobs:
                    --build-arg notification_email_address=${NOTIFICATION_EMAIL_ADDRESS}?
                    --build-arg sns_access_key=${SNS_ACCESS_KEY}/
                    --build-arg sns_secret_key=${SNS_SECRET_KEY}/
-                   --build-are sns_region=${AWS_DEFAULT_REGION}/
+                   --build-arg sns_region=${AWS_DEFAULT_REGION}/
                    --build-arg port=4000'
       - aws-ecs/update-service:
           family: 'converse'
