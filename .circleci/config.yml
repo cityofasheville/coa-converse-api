@@ -92,11 +92,11 @@ workflows:
           filters:
             branches:
               only: development
-          context: simplicity-development
+          context: converse-development
 
       - deploy-production:
           filters:
             branches:
               only:  master
-          context: simplicity-production
+          context: converse-production
           type: approval
