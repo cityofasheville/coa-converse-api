@@ -1,14 +1,14 @@
-# SimpliCity II GraphQL Server
+# Back-end of cityofasheville/coa-converse
 
-GraphQL Server for the new SimpliCity II system
+GraphQL Server for Conversations App
 
 ## Installation
 
 Clone the repository and run `npm install`
 
 ```
-git clone https://github.com/apollostack/frontpage-server
-cd frontpage-server
+git clone https://github.com/cityofasheville/coa-converse-api
+cd coa-converse-api
 npm install
 ```
 
