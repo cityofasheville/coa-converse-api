@@ -35,7 +35,7 @@
     "lodash": "^4.15.0",
     "mssql": "4.0.4",
     "pg": "6.1.6",
-    "subscriptions-transport-ws": "^0.2.2"
+    "subscriptions-transport-ws": "^0.8.3"
   },
   "devDependencies": {
     "eslint": "^2.4.0",
