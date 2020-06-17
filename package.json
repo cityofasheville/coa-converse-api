@@ -19,7 +19,7 @@
   "license": "MIT",
   "homepage": "https://github.com/cityofasheville/coa-converse-api",
   "dependencies": {
-    "apollo-server": "^0.2.0",
+    "apollo-server": "^2.14.2",
     "aws-sdk": "^2.356.0",
     "body-parser": "^1.15.2",
     "coa-command-line-args": "^1.0.1",
