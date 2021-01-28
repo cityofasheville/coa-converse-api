@@ -31,8 +31,11 @@ workflows:
   version: 2
   build-and-deploy:
     jobs:
-
-      - build
+      - build:
+          filters:
+            branches:
+              only: development
+            context: dev-converse-api
       - deploy:
           filters:
             branches:
