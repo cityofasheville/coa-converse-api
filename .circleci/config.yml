@@ -1,15 +1,18 @@
 version: 2
 jobs:
   build:
+    working_directory: /opt/coa-converse-api
     docker:
       - image: circleci/node:14
+    machine:
+      enabled: true
     steps:
       - checkout
       - run:
           name: install-dependencies
           command: npm install
       - deploy:
-          name: pust to ec2
+          name: push to ec2
           command: ssh-o"StrictHostKeyChecking no"circleci@SERVER_HOSTNAME"cd ${CODE_PATH}; git pull; npm ci; cd deployment; redeploy.sh;"
 
 workflows:
