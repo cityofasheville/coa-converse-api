@@ -1,23 +1,9 @@
 version: 2.17
 jobs:
   build:
-    working_directory: ~/hello-sts
+    working_directory: ~/opt/notifications
     docker:
       - image: circleci/node:latest
-    steps:
-      - checkout
-      - run:
-          name: update-npm
-          command: 'sudo npm install -g npm@latest'
-      - restore_cache:
-          key: dependency-cache-{{checksum "package-lock.json"}}
-      - run:
-          name: install-npm
-          command: npm ci
-      - save_cache:
-          key: dependency-cache-{{checksum "package-lock.json"}}
-          paths:
-            - ./node_modules
   deploy:
     machine:
       enabled: true
@@ -31,16 +17,8 @@ workflows:
   version: 2
   build-and-deploy:
     jobs:
-      - build:
-          filters:
-            branches:
-              only: development
-          context: dev-converse-api
       - deploy:
           filters:
             branches:
               only: development
           context: dev-converse-api
-          requires:
-            - build
-
