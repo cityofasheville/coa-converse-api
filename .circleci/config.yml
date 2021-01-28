@@ -2,8 +2,6 @@ version: 2
 jobs:
   build:
     working_directory: /opt/coa-converse-api
-    docker:
-      - image: circleci/node:14
     machine:
       enabled: true
     steps:
