@@ -1,23 +1,22 @@
-version: 2.17
+version: 2
 jobs:
   build:
-    working_directory: ~/opt/notifications
     docker:
-      - image: circleci/node:latest
-  deploy:
-    machine:
-      enabled: true
+      - image: circleci/node:14
     steps:
       - checkout
       - run:
-          name: Deploy over SSH
-          command: ssh -p 22 circleci@SERVER_HOSTNAME "cd ${CODE_PATH}; git pull; npm ci; cd deployment; redeploy.sh";
+          name: install-dependencies
+          command: npm install
+      - deploy:
+          name: pust to ec2
+          command: ssh-o"StrictHostKeyChecking no"circleci@SERVER_HOSTNAME"cd ${CODE_PATH}; git pull; npm ci; cd deployment; redeploy.sh;"
 
 workflows:
-  version: 2.17
-  build-and-deploy:
+  version: 2
+  deploy-dev:
     jobs:
-      - deploy:
+      - build:
           filters:
             branches:
               only: development
