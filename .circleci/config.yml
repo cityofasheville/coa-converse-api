@@ -14,7 +14,7 @@ jobs:
           command: ssh -p 22 circleci@SERVER_HOSTNAME "cd ${CODE_PATH}; git pull; npm ci; cd deployment; redeploy.sh";
 
 workflows:
-  version: 2
+  version: 2.17
   build-and-deploy:
     jobs:
       - deploy:
