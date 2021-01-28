@@ -31,16 +31,23 @@ workflows:
   version: 2
   build-and-deploy:
     jobs:
+<<<<<<< HEAD
       - build:
           filters:
             branches:
               only: development
-          context: dev-converse-api
+            context: dev-converse-api
+||||||| merged common ancestors
+
+      - build
+=======
+      - build
+>>>>>>> ba8374e8c46f1ba9563633900f263191e3e7db5f
       - deploy:
           filters:
             branches:
               only: development
-          context: dev-converse-api
+            context: dev-converse-api
           requires:
             - build
 
