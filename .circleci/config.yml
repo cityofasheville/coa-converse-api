@@ -1,102 +1,43 @@
-version: 2.1
-orbs:
-  aws-ecr: circleci/aws-ecr@6.6.0
-  aws-ecs: circleci/aws-ecs@1.0.4
-
-defaults: &defaults
-  docker:
-    - image: circleci/python:3.7.1
+version: 2.17
 jobs:
-  deploy-production:
-    <<: *defaults
+  build:
+    working_directory: ~/hello-sts
+    docker:
+      - image: circleci/node:latest
     steps:
-      - setup_remote_docker
-      - aws-ecr/build-and-push-image:
-          account-url: ECR_ACCOUNT_URL
-          aws-access-key-id: AWS_ACCESS_KEY_ID
-          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
-          region: AWS_DEFAULT_REGION
-          repo: 'coa-converseapi'
-          tag: "${CIRCLE_SHA1}"
-          extra-build-args: '--build-arg dbhost=${DBHOST}/
-               --build-arg dbuser=${DBUSER}/
-               --build-arg dbpassword=${DBPASSWORD}/
-               --build-arg database=${DATABASE}/
-               --build-arg wh_dbhost=${DBHOST}/
-               --build-arg wh_dbuser=${DBUSER}/
-               --build-arg wh_dbpassword=${DBPASSWORD}/
-               --build-arg wh_database=${DATABASE}/
-               --build-arg debugging=${DEBUGGING}/
-               --build-arg firebase_service_account=${FIREBASE_SERVICE_ACCOUNT}/
-               --build-arg firebase_db_url=${FIREBASE_DB_URL}/
-               --build-arg logfile=${LOGFILE}/
-               --build-arg application_link=${APPLICATION_LINK}/
-               --build-arg notification_email_address=${NOTIFICATION_EMAIL_ADDRESS}?
-               --build-arg sns_access_key=${SNS_ACCESS_KEY}/
-               --build-arg sns_secret_key=${SNS_SECRET_KEY}/
-               --build-arg sns_region=${AWS_DEFAULT_REGION}/
-               --build-arg port=8080'
-      - aws-ecs/update-service:
-          family: 'simplicityapi'
-          cluster-name: 'simplicityapi_ecs_cluster'
-          service-name: 'simplicityapi'
-          container-image-name-updates: 'container=simplicityapi,tag=${CIRCLE_SHA1}'
-          force-new-deployment: true
-          verify-revision-is-deployed: true
-          max-poll-attempts: 30
-          poll-interval: 60
-          fail-on-verification-timeout: false
-  deploy-development:
-    <<: *defaults
+      - checkout
+      - run:
+          name: update-npm
+          command: 'sudo npm install -g npm@latest'
+      - restore_cache:
+          key: dependency-cache-{{checksum "package-lock.json"}}
+      - run:
+          name: install-npm
+          command: npm ci
+      - save_cache:
+          key: dependency-cache-{{checksum "package-lock.json"}}
+          paths:
+            - ./node_modules
+  deploy:
+    machine:
+      enabled: true
     steps:
-      - setup_remote_docker
-      - aws-ecr/build-and-push-image:
-          account-url: ECR_ACCOUNT_URL
-          aws-access-key-id: AWS_ACCESS_KEY_ID
-          aws-secret-access-key: AWS_SECRET_ACCESS_KEY
-          region: AWS_DEFAULT_REGION
-          repo: 'coa-converseapi'
-          tag: "${CIRCLE_SHA1}"
-          extra-build-args: '--build-arg dbhost=${DBHOST}/
-                   --build-arg dbuser=${DBUSER}/
-                   --build-arg dbpassword=${DBPASSWORD}/
-                   --build-arg database=${DATABASE}/
-                   --build-arg wh_dbhost=${DBHOST}/
-                   --build-arg wh_dbuser=${DBUSER}/
-                   --build-arg wh_dbpassword=${DBPASSWORD}/
-                   --build-arg wh_database=${DATABASE}/
-                   --build-arg debugging=${DEBUGGING}/
-                   --build-arg firebase_service_account=${FIREBASE_SERVICE_ACCOUNT}/
-                   --build-arg firebase_db_url=${FIREBASE_DB_URL}/
-                   --build-arg logfile=${LOGFILE}/
-                   --build-arg application_link=${APPLICATION_LINK}/
-                   --build-arg notification_email_address=${NOTIFICATION_EMAIL_ADDRESS}?
-                   --build-arg sns_access_key=${SNS_ACCESS_KEY}/
-                   --build-arg sns_secret_key=${SNS_SECRET_KEY}/
-                   --build-arg sns_region=${AWS_DEFAULT_REGION}/
-                   --build-arg port=4000'
-      - aws-ecs/update-service:
-          family: 'converse'
-          cluster-name: 'converse_ecs_cluster'
-          service-name: 'converse'
-          container-image-name-updates: 'container=converse,tag=${CIRCLE_SHA1}'
-          force-new-deployment: true
-          verify-revision-is-deployed: true
-          max-poll-attempts: 30
-          poll-interval: 60
-          fail-on-verification-timeout: false
+      - checkout
+      - run:
+          name: Deploy over SSH
+          command: ssh -p 22 circleci@SERVER_HOSTNAME "cd ${CODE_PATH}; git pull; npm ci; cd deployment; redeploy.sh";
+
 workflows:
-  build-deploy:
+  version: 2
+  build-and-deploy:
     jobs:
-      - deploy-development:
+
+      - build
+      - deploy:
           filters:
             branches:
               only: development
-          context: converse-development
+            context: dev-converse-api
+          requires:
+            - build
 
-      - deploy-production:
-          filters:
-            branches:
-              only:  master
-          context: converse-production
-          type: approval
