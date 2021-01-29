@@ -7,10 +7,8 @@ const cache = require('coa-web-cache')
 const {checkLogin, initializeContext, getUserInfo} = require('coa-web-login')
 const MemoryStore = require('memorystore')(session)
 const PgSession = require('connect-pg-simple')(session)
-const health = require('@cloudnative/health-connect')
 const getDbConnection = require('./common/db')
 
-let healthcheck = new health.HealthChecker()
 require('dotenv').config()
 
 const logFile = process.env.logfile ? process.env.logfile : null
