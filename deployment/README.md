@@ -1,19 +1,17 @@
 # Deploying the Simplicity GraphQL Server
+## NOTE: This process has been updates as of Feb 1, 2021
 
-These instructions are to run two SimpliCity GraphQL node server instances behind an NGINX proxy server.
+These instructions are to reset the services only. The set up and deployment have been moved to the server creation process.
 
-To deploy, simply run 
+To deploy changes, push your code to Github and create a pull request to either the development or production/main branch.
+
+The development branch will trigger the ci/cd process to install the code onto the development server and restart the services automatically.
+
+The production/main branch will trigger the ci/cd process and install the code and restart the services after recievine review and approval from an authorized approver.
+
+To restart the services manually run the redeploy.sh file:
+
 ````
-  cd deployment
-  sudo ./deploy.sh
-````
-
-or run the individual commands.
-
-To update from Github and redeploy, run:
-
-````
-  git pull
   sudo systemctl restart converse1
   sudo systemctl restart converse2
 ````

@@ -1,146 +1,127 @@
-const express = require('express');
-const { apolloExpress, graphiqlExpress } = require('apollo-server');
-const { makeExecutableSchema } = require('graphql-tools');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const Logger = require('coa-node-logging');
-require('dotenv').config();
+const {ApolloServer} = require('apollo-server-express')
+const express = require('express')
+const session = require('express-session')
+const cors = require('cors')
+const Logger = require('coa-node-logging')
+const cache = require('coa-web-cache')
+const {checkLogin, initializeContext, getUserInfo} = require('coa-web-login')
+const MemoryStore = require('memorystore')(session)
+const PgSession = require('connect-pg-simple')(session)
+const getDbConnection = require('./common/db')
 
-const logFile = process.env.logfile ? process.env.logfile : null;
-const logger = new Logger('checkins', logFile);
+require('dotenv').config()
+
+const logFile = process.env.logfile ? process.env.logfile : null
+const logger = new Logger('checkins', logFile)
+
+logger.info('Logging Initialized')
+
+
+//const GRAPHQL_PORT = process.env.PORT || 4000;
+
+logger.info('Connect to mdastore1')
+getDbConnection('mds'); // Initialize the connection.
+
+logger.info('Connect to reviews database')
+//const pool = new PgPool(reviewsConfig)
+getDbConnection('reviews');
+logger.info('Database connections initialized')
+
+const GRAPHQL_PORT = process.env.PORT || 3000
+
+const graphQLServer = express().use('*', cors())
+
+const app = express();
+
+let sessionCache = null;
+logger.info('start session')
+const prunePeriod = 86400000; // prune expired entries every 24h
+const sessionCacheMethod = process.env.session_cache_method || 'memory';
+if (sessionCacheMethod === 'memory') {
+    sessionCache = new MemoryStore({
+        checkPeriod: prunePeriod,
+    });
+} else if (sessionCacheMethod === 'pg') {
+    sessionCache = new PgSession({
+        pool: getDbConnection('mds'),
+        schemaName: 'aux',
+        ttl: prunePeriod,
+    });
+} else {
+    throw new Error(`Unknown caching method ${sessionCacheMethod}`);
+}
+logger.info('caching initialized')
+
+// Initialize session management
+app.use(session({
+    name: process.env.sessionName,
+    secret: process.env.sessionSecret,
+    resave: false,
+    saveUninitialized: true,
+    store: sessionCache,
+    cookie: {
+        httpOnly: true,
+        secure: 'auto',
+        maxAge: 1000 * 60 * 60 * 24 * process.env.maxSessionDays,
+    },
+}));
+logger.info('session handling initialized')
+
+// Set up CORS
+const corsOptions = {
+    origin: 'http://localhost:3000',
+    credentials: true,
+};
+app.use(cors(corsOptions));
+logger.info('set up cors')
+// Check whether the user is logged in
+app.use((req, res, next) => {
+    const sessionId = req.session.id;
+    cache.get(sessionId)
+        .then((cData) => {
+            let ensureInCache = Promise.resolve(null);
+            const cachedContext = cData || initializeContext();
+            if (!cData) {
+                ensureInCache = cache.store(sessionId, cachedContext);
+            }
+            ensureInCache.then(() => {
+                checkLogin(sessionId, cachedContext, cache)
+                    .then(() => getUserInfo(sessionId, cachedContext, cache, getDbConnection('mds')))
+                    .then((uinfo) => {
+                        req.session.employee_id = uinfo.id;
+                        return next();
+                    })
+                    .catch((err) => {
+                        const error = new Error(err.toString().substring(6));
+                        error.httpStatusCode = 403;
+                        error.stack = null;
+                        return next(error);
+                    });
+            });
+        });
+});
+logger.info('cache session')
+
+// Now configure and apply the GraphQL server
+
 const typeDefs = require('./schema');
 const resolvers = require('./resolvers');
-const executableSchema = makeExecutableSchema({
-  typeDefs,
-  resolvers,
+logger.info('set up server')
+const server = new ApolloServer({
+    typeDefs,
+    resolvers,
+    context: ({req}) => ({
+        sessionId: req.session.id,
+        session: req.session,
+        cache,
+    }),
 });
 
-// Import Firebase - for now (8/25/16), the use of require and import of individual
-// submodules is needed to avoid problems with webpack (import seems to require
-// beta version of webpack 2).
-logger.info('Initialize firebase');
-const firebase = require('firebase');
-firebase.initializeApp({
-  serviceAccount: './coa-converse-firebase-adminsdk-sd9yz-05a18e6d38.json',
-  databaseURL: 'https://coa-converse.firebaseio.com',
+logger.info(`Start listening on port ${GRAPHQL_PORT}`)
+
+server.applyMiddleware({app, cors: corsOptions});
+
+// And off we go!
+app.listen({port: GRAPHQL_PORT}, () => {
+    console.log(`Server ready at http://localhost:${GRAPHQL_PORT}${server.graphqlPath}`);
 });
-logger.info('Firebase initialized');
-
-const pg = require('pg');
-pg.defaults.poolSize = 1;
-const PgPool = pg.Pool;
-
-const whConfig = {
-  host: process.env.wh_dbhost,
-  user: process.env.wh_dbuser,
-  password: process.env.wh_dbpassword,
-  database: process.env.wh_database,
-  port: 5432,
-  ssl: false,
-};
-
-logger.info('Connect to mdastore1');
-
-const whPool = new PgPool(whConfig);
-
-const reviewsConfig = {
-  host: process.env.dbhost,
-  user: process.env.dbuser,
-  password: process.env.dbpassword,
-  database: process.env.database,
-  port: 5432,
-  ssl: false,
-};
-logger.info('Connect to reviews database');
-const pool = new PgPool(reviewsConfig);
-
-logger.info('Database connections initialized');
-
-const GRAPHQL_PORT = process.env.PORT || 8080;
-
-const graphQLServer = express().use('*', cors());
-const baseConfig = {
-  schema: executableSchema,
-  context: {
-    pool,
-    whPool,
-    logger,
-    employee_id: 0,
-    superuser: false,
-    loggedin: false,
-    token: null,
-    uid: null,
-    name: null,
-    email: null,
-    groups: [],
-    subscriptions: null,
-  },
-};
-logger.info('Initialize graphql server');
-graphQLServer.use('/graphql', bodyParser.json(), apolloExpress((req, res) => {
-  logger.info('New client connection');
-  if (!req.headers.authorization || req.headers.authorization === 'null') {
-    logger.warn('Client connection - not logged in');
-    return baseConfig;
-  }
-  logger.info('Attempt login verification');
-  return firebase.auth().verifyIdToken(req.headers.authorization)
-  .then(decodedToken => {
-    const lcDecodedEmail = decodedToken.email.toLowerCase();
-    // ToDo: Here is where we should do the identity override for debugging.
-    logger.info(`Logging in ${lcDecodedEmail} - look up employee ID`);
-    // Now we need to look up the employee ID
-    const query = 'select emp_id from internal.ad_info where email_city = $1';
-    return whPool.query(query, [lcDecodedEmail])
-    .then(res1 => {
-      if (res1.rows.length !== 1) {
-        logger.error(`Unable to match employee by email ${lcDecodedEmail}`);
-        throw new Error('Unable to find employee by email.');
-      }
-      const employeeId = res1.rows[0].emp_id;
-      logger.info(`Employee id for login ${lcDecodedEmail} is ${employeeId}`);
-      return pool
-      .query(`SELECT * FROM reviews.superusers WHERE emp_id = ${employeeId}`)
-      .then(res2 => {
-        let superuser = false;
-        if (res2.rows.length === 1) {
-          superuser = res2.rows[0].is_superuser;
-        }
-        if (superuser) logger.warn(`Superuser login by ${lcDecodedEmail}'`);
-        return {
-          schema: executableSchema,
-          context: {
-            pool,
-            whPool,
-            logger,
-            employee_id: employeeId,
-            // employee_id: 3667,
-            superuser,
-            loggedin: true,
-            token: req.headers.authorization,
-            uid: decodedToken.uid,
-            name: decodedToken.name,
-            email: decodedToken.email,
-          },
-        };
-      });
-    });
-  })
-  .catch((error) => {
-    if (req.headers.authorization !== 'null') {
-      logger.error(`Error decoding authentication token: ${error}`);
-    }
-    return baseConfig;
-  });
-}));
-
-graphQLServer.use('/graphiql', graphiqlExpress({
-  endpointURL: '/graphql',
-}));
-
-logger.info(`Start listening on port ${GRAPHQL_PORT}`);
-
-graphQLServer.listen(GRAPHQL_PORT, () => logger.info(
-  `Check-Ins: GraphQL Server is now running on http://localhost:${GRAPHQL_PORT}/graphql`
-));
-

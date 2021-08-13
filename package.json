@@ -3,9 +3,7 @@
   "version": "2.0.3",
   "description": "GraphQL server for SimpliCity II",
   "scripts": {
-    "start": "nodemon ./server.js ",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "lint": "eslint ."
+    "start": "nodemon ./server.js "
   },
   "repository": {
     "type": "git",
@@ -19,29 +17,27 @@
   "license": "MIT",
   "homepage": "https://github.com/cityofasheville/coa-converse-api",
   "dependencies": {
-    "apollo-server": "^0.2.0",
-    "aws-sdk": "^2.356.0",
-    "body-parser": "^1.15.2",
-    "coa-command-line-args": "^1.0.1",
+    "apollo-graphql": "^0.4.4",
+    "apollo-server": "^2.3.1",
+    "apollo-server-express": "^2.3.1",
+    "aws-sdk": "^2.388.0",
+    "axios": "^0.18.1",
     "coa-node-logging": "^3.0.0",
+    "coa-web-cache": "^1.2.2",
+    "coa-web-login": "^2.2.2",
+    "connect-pg-simple": "^5.0.0",
+    "connect-redis": "^3.4.0",
     "cors": "^2.8.0",
-    "dotenv": "^2.0.0",
+    "dotenv": "^6.2.0",
     "express": "^4.16.4",
-    "firebase": "3.4.1",
-    "graphql": "^0.7.0",
-    "graphql-subscriptions": "^0.1.5",
-    "graphql-tools": "^0.6.5",
-    "graphql-typings": "0.0.1-beta-2",
-    "lodash": "^4.15.0",
-    "mssql": "4.0.4",
-    "pg": "6.1.6",
-    "subscriptions-transport-ws": "^0.2.2"
+    "express-session": "^1.17.1",
+    "graphql": "^14.6.0",
+    "lodash": "^4.17.0",
+    "memorystore": "^1.6.2",
+    "mssql": "4.3.0",
+    "pg": "8.0.3"
   },
   "devDependencies": {
-    "eslint": "^2.4.0",
-    "eslint-config-airbnb": "^6.1.0",
-    "eslint-plugin-import": "^1.1.0",
-    "eslint-plugin-react": "^4.2.3",
-    "nodemon": "^1.9.1"
+    "nodemon": "^2.0.4"
   }
 }
